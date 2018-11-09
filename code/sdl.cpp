@@ -14,7 +14,6 @@ struct atomic { volatile SDL_atomic_t Atomic; };
 
 #include "core/memory.cpp"
 global memory_zone *GlobalZone = 0;
-global memory_arena *PermArena = 0;
 global memory_arena *TempArena = 0;
 
 global string BasePath = { };
@@ -245,13 +244,6 @@ Api_Talloc(mi Size)
 {
     Assert(TempArena->MarkerCount > 0);
     return Arena_PushSize(TempArena, Size);
-}
-
-inline void*
-Api_Palloc(mi Size)
-{
-    Assert(PermArena->MarkerCount == 0);
-    return Arena_PushSize(PermArena, Size);
 }
 
 inline void*
@@ -896,9 +888,8 @@ int SDL_main(int argc, char **argv)
 
     /* GLOBALS */
     GlobalPerfCountFrequency = SDL_GetPerformanceFrequency();
-    GlobalZone = Zone_Clear((memory_zone *)SDL_malloc(Megabytes(64)), Megabytes(64));
-    PermArena = Arena_Clear((memory_arena *)SDL_malloc(Megabytes(512)), Megabytes(512));
-    TempArena = Arena_Clear((memory_arena *)SDL_malloc(Megabytes(1)), Megabytes(1));
+    GlobalZone = Zone_Clear((memory_zone *)SDL_malloc(Megabytes(1)), Megabytes(1));
+    TempArena = Arena_Clear((memory_arena *)SDL_malloc(Kilobytes(1)), Kilobytes(1));
     memory_arena_marker InitMarker = Arena_PlaceArenaMarker(TempArena);
 
     BasePath = String(SDL_GetBasePath());

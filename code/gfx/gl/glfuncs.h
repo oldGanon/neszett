@@ -56,6 +56,11 @@ GL_FUNC(GLRENDERBUFFERSTORAGE,      glRenderbufferStorage);
 GL_FUNC(GLFRAMEBUFFERRENDERBUFFER,  glFramebufferRenderbuffer);
 GL_FUNC(GLGENERATEMIPMAP,           glGenerateMipmap);
 
+/* 3.2 */
+GL_FUNC(GLFENCESYNC,                glFenceSync);
+GL_FUNC(GLCLIENTWAITSYNC,           glClientWaitSync);
+GL_FUNC(GLDELETESYNC,               glDeleteSync);
+
 /* ES 2.0 */
 GL_FUNC(GLCLEARDEPTHF, glClearDepthf);
 GL_FUNC(GLDEPTHRANGEF, glDepthRangef);
@@ -119,6 +124,11 @@ GL_LoadFunctions()
     GL_LOAD_AND_CHECK(GLRENDERBUFFERSTORAGE,      glRenderbufferStorage);
     GL_LOAD_AND_CHECK(GLFRAMEBUFFERRENDERBUFFER,  glFramebufferRenderbuffer);
     GL_LOAD_AND_CHECK(GLGENERATEMIPMAP,           glGenerateMipmap);
+
+    /* 3.2 */
+    GL_LOAD_AND_CHECK(GLFENCESYNC,                glFenceSync);
+    GL_LOAD_AND_CHECK(GLCLIENTWAITSYNC,           glClientWaitSync);
+    GL_LOAD_AND_CHECK(GLDELETESYNC,               glDeleteSync);
 
     /* ES 2.0 */
     GL_LOAD_AND_CHECK(GLCLEARDEPTHF, glClearDepthf);
