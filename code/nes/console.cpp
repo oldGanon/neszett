@@ -2,12 +2,14 @@ struct cpu;
 struct ppu;
 struct apu;
 struct cart;
+struct gamepad;
 struct console
 {
     cpu *CPU;
     ppu *PPU;
     apu *APU;
     cart *Cart;
+    gamepad *Gamepad;
 };
 
 enum irq_source
@@ -16,6 +18,8 @@ enum irq_source
     IRQ_SOURCE_MAPPER = 0x02,
 };
 
+inline u8 Gamepad_Read(console *Console, u8 Index);
+inline void Gamepad_Write(console *Console, u8 Value);
 inline u8 Cart_Read(console *Console, u16 Address);
 inline void Cart_Write(console *Console, u16 Address, u8 Value);
 inline u8 PPU_ReadRegister(console *Console, u16 Address);
@@ -32,6 +36,18 @@ inline void Console_ClearIRQ(console *Console, irq_source Source);
 #include "nes/ppu.cpp"
 #include "nes/cpu.cpp"
 #include "nes/apu.cpp"
+
+inline u8
+Gamepad_Read(console *Console, u8 Index)
+{
+    return Gamepad_Read(Console->Gamepad, Index);
+}
+
+inline void
+Gamepad_Write(console *Console, u8 Value)
+{
+    Gamepad_Write(Console->Gamepad, Value);
+}
 
 inline u8
 Cart_Read(console *Console, u16 Address)
@@ -100,6 +116,7 @@ Console_Step(console *Console)
 static void
 Console_Reset(console *Console)
 {
+    Gamepad_Reset(Console->Gamepad);
     Cart_Reset(Console->Cart);
     APU_Reset(Console->APU);
     PPU_Reset(Console->PPU);
@@ -109,6 +126,7 @@ Console_Reset(console *Console)
 static void
 Console_Free(console *Console)
 {
+    Gamepad_Free(Console->Gamepad);
     Cart_Free(Console->Cart);
     APU_Free(Console->APU);
     PPU_Free(Console->PPU);
@@ -122,6 +140,7 @@ Console_Create(cart *Cart)
     console *Console = (console *)Api_Malloc(sizeof(console));
     Console->Cart = Cart;
     Console->Cart->Console = Console;
+    Console->Gamepad = Gamepad_Create();
     Console->APU = APU_Create(Console);
     Console->PPU = PPU_Create(Console);
     Console->CPU = CPU_Create(Console);

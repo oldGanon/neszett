@@ -207,6 +207,16 @@ Cart_Init(cart *Cart, u8 Mirroring)
             Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
         } break;
 
+        // case 7:
+        // {
+        //     Cart->Read = Mapper7_Read;
+        //     Cart->Write = Mapper7_Write;
+        //     Cart->Chr[0] = Cart->ChrRom;
+        //     Cart->Ram = Cart->PrgRam;
+        //     Cart->Rom[0] = Cart->PrgRom;
+        //     Cart->Rom[1] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 1));            
+        // } break;
+
         default: 
         {
             Cart_Free(Cart);

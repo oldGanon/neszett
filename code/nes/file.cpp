@@ -106,9 +106,19 @@ iNes_Load(string Filename, string Savename)
             }
         }
 
-        Cart_Init(Result, Mirroring);
+        Result = Cart_Init(Result, Mirroring);
     }
 
     Api_Free(Header);
     return Result;
+}
+
+
+
+static gamepad_playback*
+FM2_Load(string Filename)
+{
+    mi BytesRead;
+    u8 *Data = (u8 *)File_ReadEntireFile(Filename, &BytesRead);
+    if (!Data) return 0;
 }

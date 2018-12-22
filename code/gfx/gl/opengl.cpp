@@ -7,6 +7,10 @@ struct gl_state
     u32 Palette;
     u32 SquareVBO;
     u32 BlitShader;
+    u32 NtscShader[4];
+    u32 NtscTextures[3];
+    u32 NtscFramebuffer;
+    ivec2 WindowDim;
 };
 
 global gl_state GL = { };
@@ -45,11 +49,13 @@ static void
 OpenGL_DrawFullscreenQuad()
 {
     glBindBuffer(GL_ARRAY_BUFFER, GL.SquareVBO);
-    glVertexAttribPointer(0, 2, GL_UNSIGNED_BYTE, GL_FALSE, 2, 0);
+    glVertexAttribPointer(0, 2, GL_BYTE, GL_FALSE, 2, 0);
     glEnableVertexAttribArray(0);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glDisableVertexAttribArray(0);
 }
+
+#include "ntsc.cpp"
 
 static void
 OpenGL_LoadPalette(string Filename)
@@ -72,7 +78,9 @@ OpenGL_Init()
     glBindTexture(GL_TEXTURE_2D, GL.Texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 256, 224, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 258, 226, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
     
     glGenTextures(1, &GL.Palette);
     glActiveTexture(GL_TEXTURE1);
@@ -81,12 +89,14 @@ OpenGL_Init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 64, 1, 0, GL_RGB, GL_UNSIGNED_BYTE, NESPalette);
     
+    NTSC_Init();
+
     OpenGL_LoadPalette(S("palette.pal"));
 	
-    GL.BlitShader = OpenGL_LoadProgram(BlitShaderV, BlitShaderF);
+    GL.BlitShader = OpenGL_LoadProgram(BlitShaderAdjustedV, BlitShaderF);
 
 	{   /* SQUARE VAO */
-        const u8 Vs[] = { 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0 };
+        const i8 Vs[] = { 0,0,1,0,1,1,1,1,0,1,0,0 };
         glGenBuffers(1, &GL.SquareVBO);
         glBindBuffer(GL_ARRAY_BUFFER, GL.SquareVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(Vs), Vs, GL_STATIC_DRAW);
@@ -96,15 +106,21 @@ OpenGL_Init()
 }
 
 static void
-OpenGL_Blit(irect DrawArea)
+OpenGL_Blit(ivec2 WindowDim)
 {
-	ivec2 DrawMin = Min(DrawArea);
-    ivec2 DrawDim = Dim(DrawArea);
-    glViewport(DrawMin.x, DrawMin.y, DrawDim.x, DrawDim.y);
-    glScissor(DrawMin.x, DrawMin.y, DrawDim.x, DrawDim.y);
+
+    glViewport(0, 0, WindowDim.x, WindowDim.y);
+    glScissor(0, 0, WindowDim.x, WindowDim.y);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glUseProgram(GL.BlitShader);
+    if (WindowDim.x != GL.WindowDim.x ||
+        WindowDim.y != GL.WindowDim.y)
+        glUniform2f(glGetUniformLocation(GL.BlitShader, "WindowRes"), (f32)WindowDim.x, (f32)WindowDim.y);
     OpenGL_DrawFullscreenQuad();
+
+    NTSC_Blit(WindowDim);
+
+    GL.WindowDim = WindowDim;
 
     GLsync Fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     glClientWaitSync(Fence, GL_SYNC_FLUSH_COMMANDS_BIT, 1000000000);
@@ -112,24 +128,9 @@ OpenGL_Blit(irect DrawArea)
 }
 
 static void
-OpenGL_Clear(ivec2 WindowDim)
+OpenGL_Frame(u8 *Screen)
 {
-    glViewport(0, 0, WindowDim.x, WindowDim.y);
-    glScissor(0, 0, WindowDim.x, WindowDim.y);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
-}
-
-static void
-OpenGL_Frame(u8 *Screen, u32 Background)
-{
-    Background = (Background & 63) * 3;
-    f32 R = NESPalette[Background + 0] / 255.0f;
-    f32 G = NESPalette[Background + 1] / 255.0f;
-    f32 B = NESPalette[Background + 2] / 255.0f;
-    glClearColor(R, G, B, 1.0f);
-
-	glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, GL.Texture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 224, GL_RED, GL_UNSIGNED_BYTE, Screen + (8*256));
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 258, 226, GL_RED, GL_UNSIGNED_BYTE, Screen);
 }

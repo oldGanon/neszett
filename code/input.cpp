@@ -11,14 +11,9 @@ enum input_nes_buttons
     NES_BUTTON_COUNT,
 };
 
-struct input_key
-{
-    u32 KeyCode;
-};
-
 struct input
 {
-    input_key Buttons[NES_BUTTON_COUNT];
+    u32 Buttons[NES_BUTTON_COUNT];
 };
 
 static void
@@ -26,7 +21,7 @@ Input_Key(input *Input, u32 KeyCode, b32 Down)
 {
     for (u8 i = 0; i < NES_BUTTON_COUNT; ++i)
     {
-        if (KeyCode != Input->Buttons[i].KeyCode)
+        if (KeyCode != Input->Buttons[i])
             continue;
 
         u8 Mask = 1 << (i & 7);
@@ -140,7 +135,7 @@ Input_WriteControlsTXT(input *Input)
     string File = String();
     for (u8 i = 0; i < NES_BUTTON_COUNT; ++i)
     {
-        string Key = String(SDL_GetKeyName(Input->Buttons[i].KeyCode));
+        string Key = String(SDL_GetKeyName(Input->Buttons[i]));
         string Button = Input_NESButtonToName(i);
         File = TString_Concat(File, Key, S(" := "), Button, S("\r\n"));
     }
@@ -150,14 +145,14 @@ Input_WriteControlsTXT(input *Input)
 static void
 Input_Init(input *Input)
 {
-    Input->Buttons[NES_BUTTON_A].KeyCode      = SDLK_DOWN;
-    Input->Buttons[NES_BUTTON_B].KeyCode      = SDLK_LEFT;
-    Input->Buttons[NES_BUTTON_SELECT].KeyCode = SDLK_RSHIFT;
-    Input->Buttons[NES_BUTTON_START].KeyCode  = SDLK_RETURN;
-    Input->Buttons[NES_BUTTON_UP].KeyCode     = SDLK_w;
-    Input->Buttons[NES_BUTTON_LEFT].KeyCode   = SDLK_a;
-    Input->Buttons[NES_BUTTON_DOWN].KeyCode   = SDLK_s;
-    Input->Buttons[NES_BUTTON_RIGHT].KeyCode  = SDLK_d;
+    Input->Buttons[NES_BUTTON_A]      = SDLK_DOWN;
+    Input->Buttons[NES_BUTTON_B]      = SDLK_LEFT;
+    Input->Buttons[NES_BUTTON_SELECT] = SDLK_RSHIFT;
+    Input->Buttons[NES_BUTTON_START]  = SDLK_RETURN;
+    Input->Buttons[NES_BUTTON_UP]     = SDLK_w;
+    Input->Buttons[NES_BUTTON_LEFT]   = SDLK_a;
+    Input->Buttons[NES_BUTTON_DOWN]   = SDLK_s;
+    Input->Buttons[NES_BUTTON_RIGHT]  = SDLK_d;
 
     mi Length;
     void *Data = File_ReadEntireFile(S("controls.txt"), &Length);
@@ -180,7 +175,7 @@ Input_Init(input *Input)
         if (Code > 255) continue;
         u8 NesButton = Input_NESButtonFromName(Key);
         if (NesButton == 0xFF) continue;
-        Input->Buttons[NesButton].KeyCode = Code;
+        Input->Buttons[NesButton] = Code;
     }
 
     Api_Free(Data);

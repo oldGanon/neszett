@@ -71,7 +71,7 @@ struct ppu
     u8 OAM2[32];
     u32 Sprites[8];
     u32 SpritesIndices[8];
-    u8 Screen[240][256];
+    u8 Screen[240][260];
 };
 
 inline u8
@@ -90,7 +90,6 @@ PPU_WritePalette(ppu *PPU, u16 Address, u8 Value)
     Address &= 0x1F;
     if (!(Address & 0xF)) Address = 0x0;
     PPU->Palettes[Address] = Value;
-    if (Address == 0) Atomic_Set(&GlobalBackground, Value);
 }
 
 inline u8
@@ -313,6 +312,12 @@ PPU_DrawPixel(ppu *PPU)
     u16 X = PPU->Cycles - 1;
     u16 Y = PPU->Scanline;
     
+    if (Y < 8 || 232 <= Y)
+    {
+        PPU->Screen[Y][X + 1] = PPU->Palettes[0];
+        return;
+    }
+
     u8 MaskBG = !(PPU->Mask & PPU_MASK_BGLEFT) && X < 8;
     u8 MaskSpr = !(PPU->Mask & PPU_MASK_SPRLEFT) && X < 8;
     u8 DrawBG = (!MaskBG && (PPU->Mask & PPU_MASK_DRAWBG));
@@ -337,7 +342,7 @@ PPU_DrawPixel(ppu *PPU)
             Color = (Spr & 0x0F) | 0x10;
     }
 
-    PPU->Screen[Y][X] = PPU_ReadPalette(PPU, Color);
+    PPU->Screen[Y][X + 1] = PPU_ReadPalette(PPU, Color);
 }
 
 inline u32
@@ -456,7 +461,7 @@ PPU_EnterVBlank(ppu *PPU)
         Console_TriggerNMI(PPU->Console);
     if (PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG))
     {
-        Memory_Copy(GlobalScreen, PPU->Screen, 256*240);
+        Memory_Copy(GlobalScreen, PPU->Screen[7], 260*226);
         Atomic_Set(&GlobalScreenChanged, 1);
     }
 }
@@ -496,9 +501,12 @@ PPU_Step(ppu *PPU)
     {
         if (DrawLine)
         {
-            if (PPU->Cycles == 0);
+            if (PPU->Cycles == 0)
+                PPU->Screen[PPU->Scanline][0] = PPU->Palettes[0];
             else if (PPU->Cycles <= 256)
                 PPU_DrawPixel(PPU);
+            else if (PPU->Cycles == 257)
+                PPU->Screen[PPU->Scanline][257] = PPU->Palettes[0];
         }
 
         if (FetchLine)

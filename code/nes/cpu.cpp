@@ -48,10 +48,8 @@ CPU_Read(cpu *CPU, u16 Address)
     else if (Address < 0x4020)
         if (Address <= 0x4013 || Address == 0x4015)
             return APU_ReadRegister(CPU->Console, Address);
-        else if (Address == 0x4016)
-            return Gamepad_Read(0);
-        else if (Address == 0x4017)
-            return Gamepad_Read(1);
+        else if (Address <= 0x4017)
+            return Gamepad_Read(CPU->Console, Address & 1);
         else return 0;
     else if (Address < 0x6000)
         return 0; // unused
@@ -69,7 +67,7 @@ CPU_Write(cpu *CPU, u16 Address, u8 Value)
         if (Address <= 0x4013 || Address == 0x4015 || Address == 0x4017)
             APU_WriteRegister(CPU->Console, Address, Value);
         else if (Address == 0x4016)
-            Gamepad_Write(Value);
+            Gamepad_Write(CPU->Console, Value);
         else if (Address == 0x4014) CPU_DMA(CPU, Value);
         else return;
     else if (Address < 0x6000); // unused

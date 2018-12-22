@@ -27,9 +27,8 @@ global string PrefPath = { };
 #define CPU_DIVIDER 12
 #define CPU_HZ 1789773 // (SYSTEM_HZ / CPU_DIVIDER)
 
-global atomic GlobalBackground;
 global atomic GlobalScreenChanged;
-global u8 GlobalScreen[256*240];
+global u8 GlobalScreen[226][260];
 global SDL_AudioDeviceID GlobalAudioDevice = 0;
 global u8 GlobalGamepad;
 
@@ -348,17 +347,6 @@ Main_GetWindowSize(SDL_Window *Window)
 #endif
     ivec2 WindowDimension = { Width, Height };
     return WindowDimension;
-}
-
-static irect
-Main_GetDrawArea(SDL_Window *Window)
-{
-    ivec2 WindowDim = Main_GetWindowSize(Window);
-    ivec2 ScreenDim = iVec2(256, 224);
-    ivec2 i = WindowDim / ScreenDim;
-    ScreenDim *= iVec2(MIN(i.x, i.y));
-    ivec2 Offset = (WindowDim - ScreenDim) / 2;
-    return iRect(Offset, Offset + ScreenDim);
 }
 
 static b32
@@ -930,7 +918,6 @@ int SDL_main(int argc, char **argv)
 #endif
     if (!Window) return Main_Error("Couldn't create window!");
 
-    ivec2 DrawDim = Dim(Main_GetDrawArea(Window));
     SDL_ShowWindow(Window);
     SDL_RaiseWindow(Window);
 
@@ -952,9 +939,8 @@ int SDL_main(int argc, char **argv)
 
         Main_CollectEvents(Window, &MainState);
         if (Atomic_Set(&GlobalScreenChanged, 0))
-            OpenGL_Frame(GlobalScreen, Atomic_Get(&GlobalBackground));
-        OpenGL_Clear(Main_GetWindowSize(Window));
-        OpenGL_Blit(Main_GetDrawArea(Window));
+            OpenGL_Frame(GlobalScreen[0]);
+        OpenGL_Blit(Main_GetWindowSize(Window));
         SDL_GL_SwapWindow(Window);
         SDL_Delay(1);
 

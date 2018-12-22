@@ -9,6 +9,7 @@
 #define GLSL_VERT_POSITION "P"
 #define GLSL_UNIFORM_TEXTURE "T"
 #define GLSL_UNIFORM_PALETTE "PAL"
+#define GLSL_UNIFORM_NTSC "NTSC"
 
 const char* BlitShaderV = 
     GLSL_VERSION
@@ -17,7 +18,46 @@ const char* BlitShaderV =
     "void main(){"
     "    gl_Position = vec4(" GLSL_VERT_POSITION "*2.0-1.0,0.0,1.0);"
     "    UV = " GLSL_VERT_POSITION ";"
-    "    UV.y = 1.0 - UV.y;"
+    "}";
+
+const char* BlitShaderFlippedV = 
+    GLSL_VERSION
+    "attribute vec2 " GLSL_VERT_POSITION ";"
+    "varying vec2 UV;"
+    "void main(){"
+        "gl_Position = vec4(" GLSL_VERT_POSITION "*2.0-1.0,0.0,1.0);"
+        "UV = " GLSL_VERT_POSITION ";"
+        "UV = vec2(UV.x, 1.0-UV.y) * vec2(309.75/256.0, 1.0);"
+    "}";
+
+const char* BlitShaderFittedV = 
+    GLSL_VERSION
+    "attribute vec2 " GLSL_VERT_POSITION ";"
+    "varying vec2 UV;"
+    "uniform vec2 WindowRes;"
+    "void main(){"
+        "gl_Position = vec4(" GLSL_VERT_POSITION "*2.0-1.0,0.0,1.0);"
+        "vec2 i = WindowRes / vec2(256.0,224.0);"
+        "float m = min(floor(i.x), floor(i.y));"
+        "i = i / m;"
+        "vec2 o = (1.0 - i) * 0.5;"
+        "UV = " GLSL_VERT_POSITION ";"
+        "UV = o + i * (UV * vec2(256.0/312.0, 224.0/226.0) + vec2(32.0/312.0, 0.0)) + vec2(-31.0/312.0, 1.0/226.0);"
+    "}";
+
+const char* BlitShaderAdjustedV = 
+    GLSL_VERSION
+    "attribute vec2 " GLSL_VERT_POSITION ";"
+    "varying vec2 UV;"
+    "uniform vec2 WindowRes;"
+    "void main(){"
+        "gl_Position = vec4(" GLSL_VERT_POSITION "*2.0-1.0,0.0,1.0);"
+        "vec2 i = WindowRes / vec2(256.0,224.0);"
+        "float m = min(floor(i.x), floor(i.y));"
+        "i = i / m;"
+        "vec2 o = (1.0 - i) * 0.5;"
+        "UV = " GLSL_VERT_POSITION ";"
+        "UV = o + i * vec2(UV.x, 1.0-UV.y) * vec2(256.0/258.0, 224.0/226.0) + vec2(1.0/258.0, 1.0/226.0);"
     "}";
 
 const char *BlitShaderF =
@@ -87,6 +127,7 @@ OpenGL_LoadProgram(const char* Vertex, const char* Fragment)
     glLinkProgram(ProgramID);
     glUniform1i(glGetUniformLocation(ProgramID, GLSL_UNIFORM_TEXTURE), 0);
     glUniform1i(glGetUniformLocation(ProgramID, GLSL_UNIFORM_PALETTE), 1);
+    glUniform1i(glGetUniformLocation(ProgramID, GLSL_UNIFORM_NTSC),    2);
     glUseProgram(0);
 
     /* CLEAN UP */
