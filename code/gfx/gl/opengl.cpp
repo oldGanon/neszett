@@ -3,14 +3,17 @@
 
 struct gl_state
 {
+    u32 TBO;
 	u32 Texture;
     u32 Palette;
+    u32 SquareVAO;
     u32 SquareVBO;
     u32 BlitShader;
-    u32 NtscShader[4];
+    u32 NtscShader[6];
     u32 NtscTextures[3];
     u32 NtscFramebuffer;
     ivec2 WindowDim;
+    u32 Frame;
 };
 
 global gl_state GL = { };
@@ -48,11 +51,9 @@ OpenGL_CheckError()
 static void
 OpenGL_DrawFullscreenQuad()
 {
-    glBindBuffer(GL_ARRAY_BUFFER, GL.SquareVBO);
-    glVertexAttribPointer(0, 2, GL_BYTE, GL_FALSE, 2, 0);
-    glEnableVertexAttribArray(0);
+    glBindVertexArray(GL.SquareVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
-    glDisableVertexAttribArray(0);
+    glBindVertexArray(0);
 }
 
 #include "ntsc.cpp"
@@ -73,6 +74,16 @@ OpenGL_LoadPalette(string Filename)
 static b32
 OpenGL_Init()
 {
+#if OPENGL_USETEXTUREBUFFER
+    glGenBuffers(1, &GL.TBO);
+    glBindBuffer(GL_TEXTURE_BUFFER, GL.TBO);
+    glBufferStorage(GL_TEXTURE_BUFFER, 260*226, 0, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+    GlobalScreen = (u8 *)glMapBufferRange(GL_TEXTURE_BUFFER, 0, 260*226, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+    glGenTextures(1, &GL.Texture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_BUFFER, GL.Texture);
+    glTexBuffer(GL_TEXTURE_BUFFER, GL_R8, GL.TBO);
+#else
     glGenTextures(1, &GL.Texture);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, GL.Texture);
@@ -81,7 +92,8 @@ OpenGL_Init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 258, 226, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
-    
+#endif
+
     glGenTextures(1, &GL.Palette);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, GL.Palette);
@@ -97,9 +109,15 @@ OpenGL_Init()
 
 	{   /* SQUARE VAO */
         const i8 Vs[] = { 0,0,1,0,1,1,1,1,0,1,0,0 };
+        glGenVertexArrays(1, &GL.SquareVAO);
+        glBindVertexArray(GL.SquareVAO);
         glGenBuffers(1, &GL.SquareVBO);
         glBindBuffer(GL_ARRAY_BUFFER, GL.SquareVBO);
+        glVertexAttribPointer(0, 2, GL_UNSIGNED_BYTE, GL_FALSE, 2, 0);
+        glEnableVertexAttribArray(0);
         glBufferData(GL_ARRAY_BUFFER, sizeof(Vs), Vs, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
     }
 
     return OpenGL_CheckError();
@@ -130,7 +148,13 @@ OpenGL_Blit(ivec2 WindowDim)
 static void
 OpenGL_Frame(u8 *Screen)
 {
+    GL.Frame++;
+#if OPENGL_USETEXTUREBUFFER
+    // glBindBuffer(GL_TEXTURE_BUFFER, GL.TBO);
+    // glBufferSubData(GL_TEXTURE_BUFFER, 0, 260 * 226, Screen);
+#else
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, GL.Texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 258, 226, GL_RED, GL_UNSIGNED_BYTE, Screen);
+#endif
 }

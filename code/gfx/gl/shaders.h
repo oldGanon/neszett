@@ -21,13 +21,14 @@ const char* BlitShaderV =
     "}";
 
 const char* BlitShaderFlippedV = 
-    GLSL_VERSION
+    // GLSL_VERSION
+    "#version 150\n"
     "attribute vec2 " GLSL_VERT_POSITION ";"
     "varying vec2 UV;"
     "void main(){"
         "gl_Position = vec4(" GLSL_VERT_POSITION "*2.0-1.0,0.0,1.0);"
         "UV = " GLSL_VERT_POSITION ";"
-        "UV = vec2(UV.x, 1.0-UV.y) * vec2(309.75/256.0, 1.0);"
+        "UV = vec2(UV.x, 1.0-UV.y) * vec2(312.0/258.0, 1.0);"
     "}";
 
 const char* BlitShaderFittedV = 
