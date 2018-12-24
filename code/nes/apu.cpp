@@ -4,7 +4,7 @@
 #define APU_DAC_HZ 43653
 #define APU_DAC_CPU_HZ 41 // (CPU_HZ / APU_DAC_HZ)
 
-#define APU_RUNNNING_AVG_LENGTH 1024
+#define APU_RUNNNING_AVG_LENGTH 512
 #define APU_RUNNNING_AVG_NEW_FACTOR (1.0f / APU_RUNNNING_AVG_LENGTH)
 #define APU_RUNNNING_AVG_OLD_FACTOR (1.0f - APU_RUNNNING_AVG_NEW_FACTOR)
 
@@ -152,8 +152,8 @@ APU_SquareOut(apu_square *Square)
 static u8
 APU_TriangleOut(apu_triangle *Triangle)
 {
-    if (!Triangle->Length) return 0;
-    if (!Triangle->Counter) return 0;
+    // if (!Triangle->Length) return 7;
+    // if (!Triangle->Counter) return 7;
     if (Triangle->Timer.Period < 2) return 7;
     return APU_Triangle[Triangle->Sequence & 0x1F];
 }
