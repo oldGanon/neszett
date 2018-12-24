@@ -1,5 +1,5 @@
 #define APU_SEQU_DIVIDER 89490
-#define APU_SEQU_CPU_HZ 7457  //6400 // 7457 // (CPU_HZ / 240)
+#define APU_SEQU_CPU_HZ 6400  // 6400 // 7457 // (CPU_HZ / 240)
 
 #define APU_DAC_HZ 43653
 #define APU_DAC_CPU_HZ 41 // (CPU_HZ / APU_DAC_HZ)
@@ -152,6 +152,8 @@ APU_SquareOut(apu_square *Square)
 static u8
 APU_TriangleOut(apu_triangle *Triangle)
 {
+    if (!Triangle->Length) return 0;
+    if (!Triangle->Counter) return 0;
     if (Triangle->Timer.Period < 2) return 7;
     return APU_Triangle[Triangle->Sequence & 0x1F];
 }
@@ -309,6 +311,7 @@ APU_WriteLength(apu_triangle *Triangle, u8 Value)
     Triangle->Length = APU_LengthLUT[Value >> 3];
     Triangle->Timer.Period &= 0xFF;
     Triangle->Timer.Period |= ((u16)Value & 7) << 8;
+    Triangle->Timer.Counter = Triangle->Timer.Period;
     Triangle->Halt = 1;
 }
 
@@ -464,7 +467,7 @@ APU_StepLength(apu *APU)
         --APU->Square[0].Length;
     if (!(APU->Square[1].Envelope.Flags & 0x20) && APU->Square[1].Length)
         --APU->Square[1].Length;
-    if (!APU->Triangle.Halt && APU->Triangle.Length)
+    if (!(APU->Triangle.Envelope & 0x80) && APU->Triangle.Length)
         --APU->Triangle.Length;
     if (!(APU->Noise.Envelope.Flags & 0x20) && APU->Noise.Length)
         --APU->Noise.Length;

@@ -38,7 +38,7 @@ const char* BlitShaderFittedV =
     "uniform vec2 WindowRes;"
     "void main(){"
         "gl_Position = vec4(" GLSL_VERT_POSITION "*2.0-1.0,0.0,1.0);"
-        "vec2 i = WindowRes / vec2(256.0,224.0);"
+        "vec2 i = WindowRes / vec2(298.666,224.0);"
         "float m = min(floor(i.x), floor(i.y));"
         "i = i / m;"
         "vec2 o = (1.0 - i) * 0.5;"

@@ -408,7 +408,7 @@ Main_SetVSync(main_state *MainState, b32 VSync)
 static SDL_Window *
 Main_CreateOpenGLWindow()
 {
-    ivec2 Resolution = iVec2(256, 224);
+    ivec2 Resolution = iVec2(300, 224);
     ivec2 WindowDim = Resolution * iVec2(3);
 
 #if (COMPILE_PI || COMPILE_EMSCRIPTEN)
