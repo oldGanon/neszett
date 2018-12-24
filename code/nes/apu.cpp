@@ -264,7 +264,7 @@ APU_WriteLength(apu_square *Square, u8 Value)
 {
     Square->Length = APU_LengthLUT[Value >> 3];
     Square->Timer.Period &= 0xFF;
-    Square->Timer.Period |= (u16)(Value & 3) << 8;
+    Square->Timer.Period |= ((u16)Value & 7) << 8;
     Square->Envelope.Write = 0xFF;
 }
 
@@ -308,7 +308,7 @@ APU_WriteLength(apu_triangle *Triangle, u8 Value)
 {
     Triangle->Length = APU_LengthLUT[Value >> 3];
     Triangle->Timer.Period &= 0xFF;
-    Triangle->Timer.Period |= (u16)(Value & 3) << 8;
+    Triangle->Timer.Period |= ((u16)Value & 7) << 8;
     Triangle->Halt = 1;
 }
 

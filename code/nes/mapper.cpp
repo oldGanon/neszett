@@ -23,7 +23,7 @@ Mapper0_Write(cart *Cart, u16 Address, u8 Value)
 {
     if (Address < 0x4000)
         Cart->Nametable[(Address >> 10) & 3][Address & 0x3FF] = Value;
-    else if(0x6000 <= Address && Address < 0x8000 && Cart->Ram)
+    else if (0x6000 <= Address && Address < 0x8000 && Cart->Ram)
         Cart->Ram[(Address & 0x1FFF)] = Value;
 }
 
@@ -398,13 +398,16 @@ Mapper7_Read(cart *Cart, u16 Address)
 static void
 Mapper7_Write(cart *Cart, u16 Address, u8 Value)
 {
-    if (Address < 0x4000)
+    if (Address < 0x2000)
+        Cart->Chr[0][Address] = Value;
+    else if (Address < 0x4000)
         Cart->Nametable[(Address >> 10) & 3][Address & 0x3FF] = Value;
     else if(0x6000 <= Address && Address < 0x8000 && Cart->Ram)
         Cart->Ram[(Address & 0x1FFF)] = Value;
     else
     {
         u32 PrgRom = (Value & 7);
-        Cart->Rom[0] = Cart->PrgRom + (0x4000 * PrgRom);
+        Cart->Rom[0] = Cart->PrgRom + (0x8000 * PrgRom);
+        Cart_SetMirroring(Cart, (Value >> 4) & 1);
     }
 }
