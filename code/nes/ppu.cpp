@@ -517,9 +517,7 @@ PPU_Step(ppu *PPU)
             else if (PPU->Cycles <= 256)
                 PPU_DrawPixel(PPU);
             else if (PPU->Cycles <= 259)
-            {
                 PPU_SetPixel(PPU, PPU->Cycles, PPU->Scanline, PPU->Palettes[0]);
-            }
         }
 
         if (FetchLine)

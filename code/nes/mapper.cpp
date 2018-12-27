@@ -66,8 +66,8 @@ Mapper1_Update(cart *Cart, u16 Address)
                 Cart->Chr[0] = Cart->ChrRom + ((Cart->Mapper1.SR % Cart->ChrRomCount) << 12);
             else
             {
-                u8 Bank = (Cart->Mapper1.SR >> 1);
-                Cart->Chr[0] = Cart->ChrRom + ((Bank % Cart->ChrRomCount) << 13);
+                u8 Bank = (Cart->Mapper1.SR & 0xFE);
+                Cart->Chr[0] = Cart->ChrRom + ((Bank % Cart->ChrRomCount) << 12);
                 Cart->Chr[1] = Cart->Chr[0] + 0x1000;
             }
         } break;
@@ -91,7 +91,7 @@ Mapper1_Register(cart *Cart, u16 Address, u8 Value)
     if (Value & 0x80)
     {
         Cart->Mapper1.SR = 0x20;
-        Cart->Mapper1.CTRL = 0x0C;
+        // Cart->Mapper1.CTRL = 0x0C;
     }
     else
     {

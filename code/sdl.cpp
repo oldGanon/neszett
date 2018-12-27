@@ -640,19 +640,31 @@ Main_CollectEvents(SDL_Window *Window, main_state *MainState)
                         break;
 
                     if (ScanCode == SDL_SCANCODE_ESCAPE)
+                    {
                         GlobalRunning = false;
+                        break;
+                    }
 
                     if (ScanCode == SDL_SCANCODE_R)
+                    {
                         NES_Reset(MainState);
+                        break;
+                    }
 
                     b32 AltKeyDown = !!(Event.key.keysym.mod & KMOD_ALT);
                     if (AltKeyDown)
                     {
                         if (ScanCode == SDL_SCANCODE_F4)
+                        {
                             GlobalRunning = false;
+                            break;
+                        }
 
                         if (ScanCode == SDL_SCANCODE_RETURN && Window)
+                        {
                             Main_ToggleFullscreen(MainState, Window);
+                            break;
+                        }
                     }
                 }
 
