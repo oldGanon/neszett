@@ -2,12 +2,14 @@ struct cart;
 
 typedef u8 cart_read_func (cart *Cart, u16 Address);
 typedef void cart_write_func (cart *Cart, u16 Address, u8 Value);
+typedef void cart_step_func (cart *Cart);
 
 struct cart
 {
     console *Console;
     cart_read_func *Read;
     cart_write_func *Write;
+    cart_step_func *Step;
     file Save;
 
     u8 *ChrRom;
@@ -56,6 +58,15 @@ struct cart
             u8 FillModeTile;
             u8 FillModeColor;
         } Mapper5;
+
+        struct
+        {
+            u8 Mode;
+            u8 IRQLatch;
+            u8 IRQCounter;
+            u8 IRQCtrl;
+            u16 IRQPrescaler;
+        } Mapper24;
     };
 };
 
@@ -73,6 +84,12 @@ inline void
 Cart_Write(cart *Cart, u16 Address, u8 Value)
 {
     Cart->Write(Cart, Address, Value);
+}
+
+inline void
+Cart_Step(cart *Cart)
+{
+    if (Cart->Step) Cart->Step(Cart);
 }
 
 static void
@@ -214,6 +231,22 @@ Cart_Init(cart *Cart, u8 Mirroring)
             Cart->Chr[0] = Cart->ChrRom;
             Cart->Ram = Cart->PrgRam;
             Cart->Rom[0] = Cart->PrgRom;
+        } break;
+
+        case 24:
+        {
+            Cart->PrgRomCount <<= 1;
+            Cart->ChrRomCount <<= 3;
+            Cart->Read = Mapper24_Read;
+            Cart->Write = Mapper24_Write;
+            Cart->Step = Mapper24_Step;
+            for (u8 i = 0; i < 8; ++i)
+                Cart->Chr[i] = Cart->ChrRom + i * 0x400;
+            Cart->Ram = Cart->PrgRam;
+            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
         } break;
 
         default: 

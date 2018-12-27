@@ -411,3 +411,139 @@ Mapper7_Write(cart *Cart, u16 Address, u8 Value)
         Cart_SetMirroring(Cart, (Value >> 4) & 1);
     }
 }
+
+//
+// MAPPER 7
+//
+
+inline void
+Mapper24_Step(cart *Cart)
+{
+    if (!(Cart->Mapper24.IRQCtrl & 2)) return;
+    if (!(Cart->Mapper24.IRQCtrl & 4))
+    {
+        Cart->Mapper24.IRQPrescaler -= 3;
+        if (Cart->Mapper24.IRQPrescaler > 341)
+            Cart->Mapper24.IRQPrescaler = 341;
+        else return;
+    }
+
+    if (Cart->Mapper24.IRQCounter == 0xFF)
+    {
+        Cart->Mapper24.IRQCounter = Cart->Mapper24.IRQLatch;
+        Console_SetIRQ(Cart->Console, IRQ_SOURCE_MAPPER);
+    }
+    else ++Cart->Mapper24.IRQCounter;
+}
+
+static u8
+Mapper24_Read(cart *Cart, u16 Address)
+{
+    switch (Address >> 13)
+    {
+        case 0: return Cart->Chr[Address >> 10][Address & 0x3FF]; break;
+        case 1: return Cart->Nametable[(Address >> 10) & 3][Address & 0x3FF]; break;
+        case 2: break;
+        case 3: if (Cart->Ram) { return Cart->Ram[(Address & 0x1FFF)]; } break;
+        case 4: return Cart->Rom[0][Address & 0x1FFF];
+        case 5: return Cart->Rom[1][Address & 0x1FFF];
+        case 6: return Cart->Rom[2][Address & 0x1FFF];
+        case 7: return Cart->Rom[3][Address & 0x1FFF];
+    }
+
+    return 0; // error
+}
+
+static void
+Mapper24_Write(cart *Cart, u16 Address, u8 Value)
+{
+    switch (Address >> 13)
+    {
+        case 0: Cart->Chr[Address >> 10][Address & 0x3FF] = Value; break;
+        case 1: Cart->Nametable[(Address >> 10) & 3][Address & 0x3FF] = Value; break;
+        case 2: break;
+        case 3: if (Cart->Ram) { Cart->Ram[(Address & 0x1FFF)] = Value; } break;
+        case 4:
+		case 5:
+		case 6:
+		case 7:
+        {
+            Address &= 0xF003;
+            switch(Address)
+            {
+                case 0x8000: case 0x8001: case 0x8002: case 0x8003:
+                {
+                    u16 Bank = ((Value & 0xF) << 1) % Cart->PrgRomCount;
+                    Cart->Rom[0] = Cart->PrgRom + (Bank * 0x2000);
+                    Cart->Rom[1] = Cart->Rom[0] + 0x2000;
+                } break;
+
+                case 0xB003:
+                {
+                    Cart->Mapper24.Mode = Value;
+                } break;
+                
+                case 0xC000: case 0xC001: case 0xC002: case 0xC003:
+                {
+                    u16 Bank = (Value & 0x1F) % Cart->PrgRomCount;
+                    Cart->Rom[2] = Cart->PrgRom + (Bank * 0x2000);
+                } break;
+
+                case 0xD000: case 0xD001: case 0xD002: case 0xD003:
+                {
+                    u8 R = Address & 3;
+                    u8 *Chr = Cart->ChrRom + (Value % Cart->ChrRomCount) * 0x400;
+                    if ((Cart->Mapper24.Mode & 3) == 1)
+                    {
+                        R <<= 1;
+                        Cart->Chr[R] = Chr;
+                        Cart->Chr[R|1] = Chr + 0x400;
+                    } 
+                    else Cart->Chr[R] = Chr;
+                } break;
+
+                case 0xE000: case 0xE001: case 0xE002: case 0xE003:
+                {
+                    u8 R = (Address & 3);
+                    u8 *Chr = Cart->ChrRom + (Value % Cart->ChrRomCount) * 0x400;
+                    if (Cart->Mapper24.Mode & 2)
+                    {
+                        R <<= 1;
+                        Cart->Chr[R|4] = Chr;
+                        Cart->Chr[R|5] = Chr + 0x400;
+                    }
+                    else if (Cart->Mapper24.Mode & 1)
+                    {
+                    }
+                    else
+                    {
+                        Cart->Chr[R|4] = Chr;
+                        u8 Mirroring[4] = { 2, 3, 0, 1 };
+                        Cart_SetMirroring(Cart, ((Cart->Mapper24.Mode >> 2) & 3) ^ 2);
+                    }
+                } break;
+
+                case 0xF000:
+                {
+                    Cart->Mapper24.IRQLatch = Value;
+                } break;
+                case 0xF001:
+                {
+                    Console_ClearIRQ(Cart->Console, IRQ_SOURCE_MAPPER);
+                    Cart->Mapper24.IRQCtrl = Value & 7;
+                    if (Value & 2)
+                    {
+                        Cart->Mapper24.IRQCounter = Cart->Mapper24.IRQLatch;
+                        Cart->Mapper24.IRQPrescaler = 341;
+                    }
+                } break;
+                case 0xF002:
+                {
+                    Cart->Mapper24.IRQCtrl &= 5;
+                    Cart->Mapper24.IRQCtrl |= (Cart->Mapper24.IRQCtrl & 1) << 1;
+                    Console_ClearIRQ(Cart->Console, IRQ_SOURCE_MAPPER);
+                } break;
+            }
+        }
+    }
+}

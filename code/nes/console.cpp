@@ -111,6 +111,7 @@ Console_Step(console *Console)
     PPU_Step(Console->PPU);
     PPU_Step(Console->PPU);
     APU_Step(Console->APU);
+    Cart_Step(Console->Cart);
 }
 
 static void
