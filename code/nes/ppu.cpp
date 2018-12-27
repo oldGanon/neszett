@@ -516,11 +516,9 @@ PPU_Step(ppu *PPU)
                 PPU_SetPixel(PPU, 0, PPU->Scanline, PPU->Palettes[0]);
             else if (PPU->Cycles <= 256)
                 PPU_DrawPixel(PPU);
-            else if (PPU->Cycles == 257)
+            else if (PPU->Cycles <= 259)
             {
-                PPU_SetPixel(PPU, 257, PPU->Scanline, PPU->Palettes[0]);
-                PPU_SetPixel(PPU, 258, PPU->Scanline, PPU->Palettes[0]);
-                PPU_SetPixel(PPU, 259, PPU->Scanline, PPU->Palettes[0]);
+                PPU_SetPixel(PPU, PPU->Cycles, PPU->Scanline, PPU->Palettes[0]);
             }
         }
 
@@ -562,6 +560,9 @@ PPU_Step(ppu *PPU)
                 PPU_CopyVertV(PPU);
         }
     }
+    
+    if (!Draw && DrawLine)
+        PPU_SetPixel(PPU, PPU->Cycles, PPU->Scanline, PPU->Palettes[0]);
 
     if (PPU->Scanline == 241 && PPU->Cycles == 1)
         PPU_EnterVBlank(PPU);
