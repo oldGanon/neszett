@@ -325,13 +325,13 @@ static void
 APU_TimerClock(apu_noise *Noise)
 {
     u16 Bit = Noise->Shift;
-    if (Noise->Mode)
-        Bit ^= (Noise->Shift >> 6);
-    else
-        Bit ^= (Noise->Shift >> 1);
-    Bit &= 1;
     Noise->Shift >>= 1;
-    Noise->Shift |= Bit << 14;
+    u16 Shift = Noise->Shift;
+    if (Noise->Mode) Shift >>= 5;
+    Bit ^= Noise->Shift;
+    Bit &= 1;
+    Bit <<= 14;
+    Noise->Shift |= Bit;
 }
 
 static void
@@ -479,8 +479,8 @@ static void
 APU_IRQ(apu *APU)
 {
     APU->Status |= 0x40;
-    // if (APU->FramCounter & 0x40)
-    //     Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
+    if (APU->FramCounter & 0x40)
+        Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
 }
 
 static void
@@ -637,7 +637,7 @@ APU_ReadStatuts(apu *APU)
     if (APU->Square[1].Length) S |= 0x02;
     if (APU->Triangle.Length)  S |= 0x04;
     if (APU->Noise.Length)     S |= 0x08;
-    // if (APU->DMC.Length)      S |= 0x10;
+    if (APU->DMC.Length)      S |= 0x10;
     return S;
 }
 

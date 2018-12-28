@@ -943,7 +943,7 @@ int SDL_main(int argc, char **argv)
     SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt");
     SDL_StopTextInput();
 
-    SDL_GL_SetSwapInterval(0);
+    // SDL_GL_SetSwapInterval(0);
 
     Arena_RevertToArenaMarker(InitMarker);
 

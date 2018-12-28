@@ -465,7 +465,7 @@ Mapper24_Audio(cart *Cart)
             Out += Cart->Mapper24.Pulse[i].Volume;
     }
 
-    return Out / -128.0f;
+    return Out / -64.0f;
 }
 
 static u8
@@ -495,10 +495,7 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
         case 1: Cart->Nametable[(Address >> 10) & 3][Address & 0x3FF] = Value; break;
         case 2: break;
         case 3: if (Cart->Ram) { Cart->Ram[(Address & 0x1FFF)] = Value; } break;
-        case 4:
-		case 5:
-		case 6:
-		case 7:
+        default:
         {
             Address &= 0xF003;
             switch(Address)
@@ -580,7 +577,11 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
                     Cart->Mapper24.SawPeriod |= (Value & 0xF) << 8;
                     Cart->Mapper24.SawEnable = Value & 0x80;
                 } break;
-                case 0xB003: Cart->Mapper24.Mode = Value; break;
+                case 0xB003:
+                {
+                    Cart->Mapper24.Mode = Value;
+                    Cart_SetMirroring(Cart, ((Cart->Mapper24.Mode >> 2) & 3) ^ 2);
+                } break;
                 
                 case 0xC000: case 0xC001: case 0xC002: case 0xC003:
                 {
@@ -617,8 +618,6 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
                     else
                     {
                         Cart->Chr[R|4] = Chr;
-                        u8 Mirroring[4] = { 2, 3, 0, 1 };
-                        Cart_SetMirroring(Cart, ((Cart->Mapper24.Mode >> 2) & 3) ^ 2);
                     }
                 } break;
 

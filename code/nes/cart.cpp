@@ -155,28 +155,28 @@ Cart_SetMirroring(cart *Cart, u8 Mirroring)
 {
     switch (Mirroring)
     {
-        case 0:
+        case 0: // Screen A
         {
             Cart->Nametable[0] = Cart->NametableLo;
             Cart->Nametable[1] = Cart->NametableLo;
             Cart->Nametable[2] = Cart->NametableLo;
             Cart->Nametable[3] = Cart->NametableLo;
         } break;
-        case 1:
+        case 1: // Screen B
         {
             Cart->Nametable[0] = Cart->NametableHi;
             Cart->Nametable[1] = Cart->NametableHi;
             Cart->Nametable[2] = Cart->NametableHi;
             Cart->Nametable[3] = Cart->NametableHi;
         } break;
-        case 2:
+        case 2: // Mirror Vertical
         {
             Cart->Nametable[0] = Cart->NametableLo;
             Cart->Nametable[1] = Cart->NametableHi;
             Cart->Nametable[2] = Cart->NametableLo;
             Cart->Nametable[3] = Cart->NametableHi;
         } break;
-        case 3:
+        case 3: // Mirror Horizontal
         {
             Cart->Nametable[0] = Cart->NametableLo;
             Cart->Nametable[1] = Cart->NametableLo;
