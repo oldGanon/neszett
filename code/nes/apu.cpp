@@ -184,7 +184,9 @@ APU_SampleOut(apu *APU)
     TNDOut += APU_DMCOut(&APU->DMC) / 22638.0f;
     if (TNDOut > 0.0f) TNDOut = 159.79f / (1.0f / TNDOut + 100.0f);
     
-    f32 Out = (SquareOut + TNDOut) * 0.25f;
+    f32 MapperOut = Cart_Audio(APU->Console->Cart);
+
+    f32 Out = (SquareOut + TNDOut + MapperOut) * 0.25f;
     f32 NewAverage = APU->RunningAverage*APU_RUNNNING_AVG_OLD_FACTOR + Out*APU_RUNNNING_AVG_NEW_FACTOR;
     Out -= APU->RunningAverage;
     APU->RunningAverage = NewAverage;

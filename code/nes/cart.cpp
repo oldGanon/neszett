@@ -3,6 +3,7 @@ struct cart;
 typedef u8 cart_read_func (cart *Cart, u16 Address);
 typedef void cart_write_func (cart *Cart, u16 Address, u8 Value);
 typedef void cart_step_func (cart *Cart);
+typedef f32 cart_audio_func (cart *Cart);
 
 struct cart
 {
@@ -10,6 +11,7 @@ struct cart
     cart_read_func *Read;
     cart_write_func *Write;
     cart_step_func *Step;
+    cart_audio_func *Audio;
     file Save;
 
     u8 *ChrRom;
@@ -66,6 +68,24 @@ struct cart
             u8 IRQCounter;
             u8 IRQCtrl;
             u16 IRQPrescaler;
+
+            struct
+            {
+                u16 Counter;
+                u16 Period;
+                u8 Duty;
+                u8 DutyCycle;
+                u8 Volume;
+                u8 Mode;
+                u8 Enable;
+            } Pulse[2];
+            u8 PulseHalt;
+            u8 PulseFreq;
+
+            u16 SawCounter;
+            u16 SawPeriod;
+            u8 SawAccum;
+            u8 SawEnable;
         } Mapper24;
     };
 };
@@ -89,7 +109,16 @@ Cart_Write(cart *Cart, u16 Address, u8 Value)
 inline void
 Cart_Step(cart *Cart)
 {
-    if (Cart->Step) Cart->Step(Cart);
+    if (Cart->Step)
+        Cart->Step(Cart);
+}
+
+inline f32
+Cart_Audio(cart *Cart)
+{
+    if (Cart->Audio)
+        return Cart->Audio(Cart);
+    return 0;
 }
 
 static void
@@ -240,6 +269,7 @@ Cart_Init(cart *Cart, u8 Mirroring)
             Cart->Read = Mapper24_Read;
             Cart->Write = Mapper24_Write;
             Cart->Step = Mapper24_Step;
+            Cart->Audio = Mapper24_Audio;
             for (u8 i = 0; i < 8; ++i)
                 Cart->Chr[i] = Cart->ChrRom + i * 0x400;
             Cart->Ram = Cart->PrgRam;

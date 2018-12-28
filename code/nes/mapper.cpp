@@ -419,6 +419,23 @@ Mapper7_Write(cart *Cart, u16 Address, u8 Value)
 inline void
 Mapper24_Step(cart *Cart)
 {
+    // AUDIO
+    if (!Cart->Mapper24.PulseHalt)
+    for (u32 i = 0; i < 2; ++i)
+    if (!(Cart->Mapper24.Pulse[i].Counter--))
+    {
+        Cart->Mapper24.Pulse[i].Counter = Cart->Mapper24.Pulse[i].Period >> Cart->Mapper24.PulseFreq;
+        if (Cart->Mapper24.Pulse[i].Enable &&
+            !(Cart->Mapper24.Pulse[i].Duty--))
+            Cart->Mapper24.Pulse[i].Duty = 15;
+    }
+
+    if (!(Cart->Mapper24.SawCounter--))
+    {
+        Cart->Mapper24.SawCounter = Cart->Mapper24.SawPeriod;
+    }
+
+    // IRQ
     if (!(Cart->Mapper24.IRQCtrl & 2)) return;
     if (!(Cart->Mapper24.IRQCtrl & 4))
     {
@@ -434,6 +451,21 @@ Mapper24_Step(cart *Cart)
         Console_SetIRQ(Cart->Console, IRQ_SOURCE_MAPPER);
     }
     else ++Cart->Mapper24.IRQCounter;
+}
+
+inline f32
+Mapper24_Audio(cart *Cart)
+{
+    f32 Out = 0.0f;
+    for (u32 i = 0; i < 2; ++i)
+    {
+        if (Cart->Mapper24.Pulse[i].Enable &&
+            (Cart->Mapper24.Pulse[i].Mode ||
+             Cart->Mapper24.Pulse[i].Duty <= Cart->Mapper24.Pulse[i].DutyCycle))
+            Out += Cart->Mapper24.Pulse[i].Volume;
+    }
+
+    return Out / -128.0f;
 }
 
 static u8
@@ -478,10 +510,77 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
                     Cart->Rom[1] = Cart->Rom[0] + 0x2000;
                 } break;
 
-                case 0xB003:
+                case 0x9000:
                 {
-                    Cart->Mapper24.Mode = Value;
+                    Cart->Mapper24.Pulse[0].Volume = Value & 0xF;
+                    Cart->Mapper24.Pulse[0].DutyCycle = (Value & 0x70) >> 4;
+                    Cart->Mapper24.Pulse[0].Mode = Value & 0x80;
                 } break;
+                case 0x9001:
+                {
+                    Cart->Mapper24.Pulse[0].Period &= 0xFF00;
+                    Cart->Mapper24.Pulse[0].Period |= Value;
+                } break;
+                case 0x9002:
+                {
+                    Cart->Mapper24.Pulse[0].Period &= 0xFF;
+                    Cart->Mapper24.Pulse[0].Period |= (Value & 0xF) << 8;
+                    if (Value & 0x80)
+                        Cart->Mapper24.Pulse[0].Enable = 0xFF;
+                    else
+                    {
+                        Cart->Mapper24.Pulse[0].Enable = 0x00;
+                        Cart->Mapper24.Pulse[0].Duty = 15;
+                    }
+                } break;
+                case 0x9003:
+                {
+                    Cart->Mapper24.PulseHalt = Value & 1;
+                    if (Value & 4)
+                        Cart->Mapper24.PulseFreq = 8;
+                    else if (Value & 2)
+                        Cart->Mapper24.PulseFreq = 4;
+                    else
+                        Cart->Mapper24.PulseFreq = 0;
+                } break;
+
+                case 0xA000:
+                {
+                    Cart->Mapper24.Pulse[1].Volume = Value & 0xF;
+                    Cart->Mapper24.Pulse[1].DutyCycle = (Value & 0x70) >> 4;
+                    Cart->Mapper24.Pulse[1].Mode = Value & 0x80;
+                } break;
+                case 0xA001:
+                {
+                    Cart->Mapper24.Pulse[1].Period &= 0xFF00;
+                    Cart->Mapper24.Pulse[1].Period |= Value;
+                } break;
+                case 0xA002:
+                {
+                    Cart->Mapper24.Pulse[1].Period &= 0xFF;
+                    Cart->Mapper24.Pulse[1].Period |= (Value & 0xF) << 8;
+                    if (Value & 0x80)
+                        Cart->Mapper24.Pulse[1].Enable = 0xFF;
+                    else
+                    {
+                        Cart->Mapper24.Pulse[1].Enable = 0x00;
+                        Cart->Mapper24.Pulse[1].Duty = 15;
+                    }
+                } break;
+
+                case 0xB000: Cart->Mapper24.SawAccum = Value & 0x3F; break;
+                case 0xB001:
+                {
+                    Cart->Mapper24.SawPeriod &= 0xFF00;
+                    Cart->Mapper24.SawPeriod |= Value;
+                } break;
+                case 0xB002:
+                {
+                    Cart->Mapper24.SawPeriod &= 0xFF;
+                    Cart->Mapper24.SawPeriod |= (Value & 0xF) << 8;
+                    Cart->Mapper24.SawEnable = Value & 0x80;
+                } break;
+                case 0xB003: Cart->Mapper24.Mode = Value; break;
                 
                 case 0xC000: case 0xC001: case 0xC002: case 0xC003:
                 {
@@ -523,10 +622,7 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
                     }
                 } break;
 
-                case 0xF000:
-                {
-                    Cart->Mapper24.IRQLatch = Value;
-                } break;
+                case 0xF000: Cart->Mapper24.IRQLatch = Value; break;
                 case 0xF001:
                 {
                     Console_ClearIRQ(Cart->Console, IRQ_SOURCE_MAPPER);
