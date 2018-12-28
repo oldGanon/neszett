@@ -420,19 +420,26 @@ inline void
 Mapper24_Step(cart *Cart)
 {
     // AUDIO
-    if (!Cart->Mapper24.PulseHalt)
+    if (!Cart->Mapper24.SquareHalt)
     for (u32 i = 0; i < 2; ++i)
-    if (!(Cart->Mapper24.Pulse[i].Counter--))
+    if (!(Cart->Mapper24.Square[i].Counter--))
     {
-        Cart->Mapper24.Pulse[i].Counter = Cart->Mapper24.Pulse[i].Period >> Cart->Mapper24.PulseFreq;
-        if (Cart->Mapper24.Pulse[i].Enable &&
-            !(Cart->Mapper24.Pulse[i].Duty--))
-            Cart->Mapper24.Pulse[i].Duty = 15;
+        Cart->Mapper24.Square[i].Counter = Cart->Mapper24.Square[i].Period >> Cart->Mapper24.SquareFreq;
+        if (Cart->Mapper24.Square[i].Enable &&
+            !(Cart->Mapper24.Square[i].Duty--))
+            Cart->Mapper24.Square[i].Duty = 15;
     }
 
     if (!(Cart->Mapper24.SawCounter--))
     {
         Cart->Mapper24.SawCounter = Cart->Mapper24.SawPeriod;
+        if (Cart->Mapper24.SawStep++ & 1)
+            Cart->Mapper24.SawAccum += Cart->Mapper24.SawAccumRate;
+        if (Cart->Mapper24.SawStep >= 14)
+        {
+            Cart->Mapper24.SawStep = 0;
+            Cart->Mapper24.SawAccum = 0;
+        }
     }
 
     // IRQ
@@ -459,13 +466,16 @@ Mapper24_Audio(cart *Cart)
     f32 Out = 0.0f;
     for (u32 i = 0; i < 2; ++i)
     {
-        if (Cart->Mapper24.Pulse[i].Enable &&
-            (Cart->Mapper24.Pulse[i].Mode ||
-             Cart->Mapper24.Pulse[i].Duty <= Cart->Mapper24.Pulse[i].DutyCycle))
-            Out += Cart->Mapper24.Pulse[i].Volume;
+        if (Cart->Mapper24.Square[i].Enable &&
+            (Cart->Mapper24.Square[i].Mode ||
+             Cart->Mapper24.Square[i].Duty <= Cart->Mapper24.Square[i].DutyCycle))
+            Out -= Cart->Mapper24.Square[i].Volume;
     }
 
-    return Out / -64.0f;
+    if (Cart->Mapper24.SawEnable)
+        Out -= Cart->Mapper24.SawAccum >> 3;
+
+    return Out / 64.0f;
 }
 
 static u8
@@ -509,63 +519,63 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
 
                 case 0x9000:
                 {
-                    Cart->Mapper24.Pulse[0].Volume = Value & 0xF;
-                    Cart->Mapper24.Pulse[0].DutyCycle = (Value & 0x70) >> 4;
-                    Cart->Mapper24.Pulse[0].Mode = Value & 0x80;
+                    Cart->Mapper24.Square[0].Volume = Value & 0xF;
+                    Cart->Mapper24.Square[0].DutyCycle = (Value & 0x70) >> 4;
+                    Cart->Mapper24.Square[0].Mode = Value & 0x80;
                 } break;
                 case 0x9001:
                 {
-                    Cart->Mapper24.Pulse[0].Period &= 0xFF00;
-                    Cart->Mapper24.Pulse[0].Period |= Value;
+                    Cart->Mapper24.Square[0].Period &= 0xFF00;
+                    Cart->Mapper24.Square[0].Period |= Value;
                 } break;
                 case 0x9002:
                 {
-                    Cart->Mapper24.Pulse[0].Period &= 0xFF;
-                    Cart->Mapper24.Pulse[0].Period |= (Value & 0xF) << 8;
+                    Cart->Mapper24.Square[0].Period &= 0xFF;
+                    Cart->Mapper24.Square[0].Period |= (Value & 0xF) << 8;
                     if (Value & 0x80)
-                        Cart->Mapper24.Pulse[0].Enable = 0xFF;
+                        Cart->Mapper24.Square[0].Enable = 0xFF;
                     else
                     {
-                        Cart->Mapper24.Pulse[0].Enable = 0x00;
-                        Cart->Mapper24.Pulse[0].Duty = 15;
+                        Cart->Mapper24.Square[0].Enable = 0x00;
+                        Cart->Mapper24.Square[0].Duty = 15;
                     }
                 } break;
                 case 0x9003:
                 {
-                    Cart->Mapper24.PulseHalt = Value & 1;
+                    Cart->Mapper24.SquareHalt = Value & 1;
                     if (Value & 4)
-                        Cart->Mapper24.PulseFreq = 8;
+                        Cart->Mapper24.SquareFreq = 8;
                     else if (Value & 2)
-                        Cart->Mapper24.PulseFreq = 4;
+                        Cart->Mapper24.SquareFreq = 4;
                     else
-                        Cart->Mapper24.PulseFreq = 0;
+                        Cart->Mapper24.SquareFreq = 0;
                 } break;
 
                 case 0xA000:
                 {
-                    Cart->Mapper24.Pulse[1].Volume = Value & 0xF;
-                    Cart->Mapper24.Pulse[1].DutyCycle = (Value & 0x70) >> 4;
-                    Cart->Mapper24.Pulse[1].Mode = Value & 0x80;
+                    Cart->Mapper24.Square[1].Volume = Value & 0xF;
+                    Cart->Mapper24.Square[1].DutyCycle = (Value & 0x70) >> 4;
+                    Cart->Mapper24.Square[1].Mode = Value & 0x80;
                 } break;
                 case 0xA001:
                 {
-                    Cart->Mapper24.Pulse[1].Period &= 0xFF00;
-                    Cart->Mapper24.Pulse[1].Period |= Value;
+                    Cart->Mapper24.Square[1].Period &= 0xFF00;
+                    Cart->Mapper24.Square[1].Period |= Value;
                 } break;
                 case 0xA002:
                 {
-                    Cart->Mapper24.Pulse[1].Period &= 0xFF;
-                    Cart->Mapper24.Pulse[1].Period |= (Value & 0xF) << 8;
+                    Cart->Mapper24.Square[1].Period &= 0xFF;
+                    Cart->Mapper24.Square[1].Period |= (Value & 0xF) << 8;
                     if (Value & 0x80)
-                        Cart->Mapper24.Pulse[1].Enable = 0xFF;
+                        Cart->Mapper24.Square[1].Enable = 0xFF;
                     else
                     {
-                        Cart->Mapper24.Pulse[1].Enable = 0x00;
-                        Cart->Mapper24.Pulse[1].Duty = 15;
+                        Cart->Mapper24.Square[1].Enable = 0x00;
+                        Cart->Mapper24.Square[1].Duty = 15;
                     }
                 } break;
 
-                case 0xB000: Cart->Mapper24.SawAccum = Value & 0x3F; break;
+                case 0xB000: Cart->Mapper24.SawAccumRate = Value & 0x3F; break;
                 case 0xB001:
                 {
                     Cart->Mapper24.SawPeriod &= 0xFF00;
@@ -575,7 +585,14 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
                 {
                     Cart->Mapper24.SawPeriod &= 0xFF;
                     Cart->Mapper24.SawPeriod |= (Value & 0xF) << 8;
-                    Cart->Mapper24.SawEnable = Value & 0x80;
+                    if (Value & 0x80)
+                        Cart->Mapper24.SawEnable = 0xFF;
+                    else
+                    {
+                        Cart->Mapper24.SawEnable = 0x00;
+                        Cart->Mapper24.SawAccum = 0;
+                    }
+
                 } break;
                 case 0xB003:
                 {
@@ -615,10 +632,7 @@ Mapper24_Write(cart *Cart, u16 Address, u8 Value)
                     else if (Cart->Mapper24.Mode & 1)
                     {
                     }
-                    else
-                    {
-                        Cart->Chr[R|4] = Chr;
-                    }
+                    else Cart->Chr[R|4] = Chr;
                 } break;
 
                 case 0xF000: Cart->Mapper24.IRQLatch = Value; break;

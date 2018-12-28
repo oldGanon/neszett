@@ -78,12 +78,14 @@ struct cart
                 u8 Volume;
                 u8 Mode;
                 u8 Enable;
-            } Pulse[2];
-            u8 PulseHalt;
-            u8 PulseFreq;
+            } Square[2];
+            u8 SquareHalt;
+            u8 SquareFreq;
 
             u16 SawCounter;
             u16 SawPeriod;
+            u8 SawStep;
+            u8 SawAccumRate;
             u8 SawAccum;
             u8 SawEnable;
         } Mapper24;
