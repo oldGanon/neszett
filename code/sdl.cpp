@@ -892,7 +892,7 @@ int SDL_main(int argc, char **argv)
 
     /* GLOBALS */
     GlobalPerfCountFrequency = SDL_GetPerformanceFrequency();
-    GlobalZone = Zone_Clear((memory_zone *)SDL_malloc(Megabytes(1)), Megabytes(1));
+    GlobalZone = Zone_Clear((memory_zone *)SDL_malloc(Megabytes(8)), Megabytes(8));
     TempArena = Arena_Clear((memory_arena *)SDL_malloc(Kilobytes(1)), Kilobytes(1));
     memory_arena_marker InitMarker = Arena_PlaceArenaMarker(TempArena);
 

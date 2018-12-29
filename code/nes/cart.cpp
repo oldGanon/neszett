@@ -25,8 +25,8 @@ struct cart
     u8 *Rom[4];
     u8 *Nametable[4];
     
-    u8 PrgRomCount;
-    u8 ChrRomCount;
+    u16 PrgRomCount;
+    u16 ChrRomCount;
     u16 PrgRamSize;
     u16 Mapper;
 
@@ -89,6 +89,19 @@ struct cart
             u8 SawAccum;
             u8 SawEnable;
         } Mapper24;
+
+        struct
+        {
+            u8 Command;
+            u8 IRQCtrl;
+            u16 IRQCounter;
+
+            u16 SquareCounter[3];
+            u16 SquarePeriod[3];
+            u8 SquareVolume[3];
+            u8 ChannelEnable;
+            u8 AudioRegister;
+        } Mapper69;
     };
 };
 
@@ -272,6 +285,23 @@ Cart_Init(cart *Cart, u8 Mirroring)
             Cart->Write = Mapper24_Write;
             Cart->Step = Mapper24_Step;
             Cart->Audio = Mapper24_Audio;
+            for (u8 i = 0; i < 8; ++i)
+                Cart->Chr[i] = Cart->ChrRom + i * 0x400;
+            Cart->Ram = Cart->PrgRam;
+            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
+        } break;
+
+        case 69:
+        {
+            Cart->PrgRomCount <<= 1;
+            Cart->ChrRomCount <<= 3;
+            Cart->Read = Mapper69_Read;
+            Cart->Write = Mapper69_Write;
+            Cart->Step = Mapper69_Step;
+            Cart->Audio = Mapper69_Audio;
             for (u8 i = 0; i < 8; ++i)
                 Cart->Chr[i] = Cart->ChrRom + i * 0x400;
             Cart->Ram = Cart->PrgRam;

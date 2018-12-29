@@ -479,8 +479,8 @@ static void
 APU_IRQ(apu *APU)
 {
     APU->Status |= 0x40;
-    if (APU->FramCounter & 0x40)
-        Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
+    // if (APU->FramCounter & 0x40)
+    //     Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
 }
 
 static void

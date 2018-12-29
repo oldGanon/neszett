@@ -397,7 +397,6 @@ PPU_SpriteEvaluation(ppu *PPU)
         u8 i = n * 4;
         u8 Y = PPU->OAM[i];
         u8 R = (PPU->Scanline - Y) & 0xFF;
-        u32 Pattern = PPU_SpritePattern(PPU, i, R);
 
         if (Y >= 0xEF) continue;
         if (R >= SpriteSize) continue;
@@ -411,9 +410,15 @@ PPU_SpriteEvaluation(ppu *PPU)
         PPU->OAM2[C * 4 + 1] = PPU->OAM[i + 1];
         PPU->OAM2[C * 4 + 2] = PPU->OAM[i + 2];
         PPU->OAM2[C * 4 + 3] = PPU->OAM[i + 3];
-        PPU->Sprites[C] = Pattern;
+        PPU->Sprites[C] = PPU_SpritePattern(PPU, i, R);;
         PPU->SpritesIndices[C] = n;
         C++;
+    }
+
+    for (u8 i = C; i < 8; ++i)
+    {
+        Cart_Read(PPU->Console, 0x1FF0);
+        Cart_Read(PPU->Console, 0x1FF8);
     }
 
     PPU->SpriteCount = C;
