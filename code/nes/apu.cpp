@@ -1,5 +1,3 @@
-#define APU_SEQU_DIVIDER 89490
-#define APU_SEQU_CPU_HZ 6400  // 6400 // 7457 // (CPU_HZ / 240)
 
 #define APU_DAC_HZ 43653
 #define APU_DAC_CPU_HZ 41 // (CPU_HZ / APU_DAC_HZ)
@@ -104,7 +102,6 @@ struct apu
     u8 FramCounter;
 
     u16 Sequencer;
-    u8 SequenceCounter;
 
     u16 DAC;
     f32 RunningAverage;
@@ -504,30 +501,31 @@ APU_SequencerStep(apu *APU)
     u8 Mode = (APU->FramCounter & 0x80) ? 5 : 4;
     if (Mode == 4)
     {
-        switch (APU->SequenceCounter)
+        switch (APU->Sequencer++)
         {
-            case 3: APU_IRQ(APU);
-            case 1: APU_StepLength(APU);
-                    APU_StepSweep(APU);
-            default:APU_StepEnvelope(APU);
-                    APU_StepTriangle(APU);
+            case 29828: APU_IRQ(APU); break;
+            case 29829: APU->Sequencer = 0;
+            case 14913: APU_StepLength(APU);
+                        APU_StepSweep(APU);
+            case  7457: 
+            case 22371: APU_StepEnvelope(APU);
+                        APU_StepTriangle(APU);
         }
     }
     else
     {
-        switch (APU->SequenceCounter)
+        switch (APU->Sequencer++)
         {
-            case 0:
-            case 2: APU_StepLength(APU);
-                    APU_StepSweep(APU);
-            case 1:
-            case 3: APU_StepEnvelope(APU);
-                    APU_StepTriangle(APU);
-            default: break;
+            case 37282: APU->Sequencer = 0; break;
+            case  7457:
+            case 22371: APU_StepLength(APU);
+                        APU_StepSweep(APU);
+            case 14913:
+            case 37281: APU_StepEnvelope(APU);
+                        APU_StepTriangle(APU);
+            case 29828: break;
         }
     }
-    ++APU->SequenceCounter;
-    APU->SequenceCounter %= Mode;
 }
 
 static b32
@@ -566,10 +564,8 @@ APU_TimerStep(apu *APU)
 static void
 APU_Step(apu *APU)
 {
-    f64 SequencerDivider = 240.0 / CPU_HZ;
-    u64 Cycle0 = (u64)(APU->Sequencer * SequencerDivider);
-    u64 Cycle1 = (u64)(++APU->Sequencer * SequencerDivider);
-    if (Cycle0 < Cycle1) APU_SequencerStep(APU);
+    APU_SequencerStep(APU);
+    
     APU_TimerStep(APU);
 
     if (++APU->DAC >= APU_DAC_CPU_HZ)
@@ -602,13 +598,24 @@ APU_WriteStatus(apu *APU, u8 Value)
 inline void
 APU_WriteFrameCounter(apu *APU, u8 Value)
 {
-    APU->Sequencer = 0;
-    APU->SequenceCounter = 0;
+    if (APU->Console->CPU->Cycles & 1)
+        APU->Sequencer = 0xFFFD;
+    else
+        APU->Sequencer = 0xFFFE;
+
     APU->FramCounter = Value;
     if (APU->FramCounter & 0x80)
-        APU_SequencerStep(APU);
+    {
+        APU_StepLength(APU);
+        APU_StepSweep(APU);
+        APU_StepEnvelope(APU);
+        APU_StepTriangle(APU);
+    }
     if (APU->FramCounter & 0x40)
+    {
         APU->Status &= ~0x40;
+        Console_ClearIRQ(APU->Console, IRQ_SOURCE_APU);
+    }
 }
 
 static void
@@ -654,10 +661,11 @@ APU_WriteRegister(apu *APU, u16 Address, u8 Value)
 static u8
 APU_ReadStatuts(apu *APU)
 {
+    u8 S = APU->Status & 0xC0;
+    
+    APU->Status &= ~0x40;
     Console_ClearIRQ(APU->Console, IRQ_SOURCE_APU);
 
-    u8 S = APU->Status & 0xC0;
-    APU->Status &= ~0x40;
     if (APU->Square[0].Length) S |= 0x01;
     if (APU->Square[1].Length) S |= 0x02;
     if (APU->Triangle.Length)  S |= 0x04;

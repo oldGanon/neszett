@@ -25,7 +25,7 @@ global string PrefPath = { };
 
 #define SYSTEM_HZ 21477272
 #define CPU_DIVIDER 12
-#define CPU_HZ 1789773 // (SYSTEM_HZ / CPU_DIVIDER)
+#define CPU_HZ 1789772.66667 // (SYSTEM_HZ / CPU_DIVIDER)
 
 #if OPENGL_USETEXTUREBUFFER
   global u8 *GlobalScreen;
