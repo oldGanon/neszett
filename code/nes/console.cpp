@@ -14,8 +14,9 @@ struct console
 
 enum irq_source
 {
-    IRQ_SOURCE_APU    = 0x01,
-    IRQ_SOURCE_MAPPER = 0x02,
+    IRQ_SOURCE_DMC    = 0x01,
+    IRQ_SOURCE_APU    = 0x02,
+    IRQ_SOURCE_MAPPER = 0x04,
 };
 
 inline u8 Gamepad_Read(console *Console, u8 Index);
@@ -117,11 +118,23 @@ Console_Step(console *Console)
 static void
 Console_Reset(console *Console)
 {
-    Gamepad_Reset(Console->Gamepad);
+    Atomic_Set(&GlobalFrame, 0);
+    Atomic_Set(&GlobalPhase, 0);
     Cart_Reset(Console->Cart);
     APU_Reset(Console->APU);
     PPU_Reset(Console->PPU);
     CPU_Reset(Console->CPU);
+}
+
+static void
+Console_Power(console *Console)
+{
+    Atomic_Set(&GlobalFrame, 0);
+    Atomic_Set(&GlobalPhase, 0);
+    Cart_Power(Console->Cart);
+    APU_Power(Console->APU);
+    PPU_Power(Console->PPU);
+    CPU_Power(Console->CPU);
 }
 
 static void
@@ -145,5 +158,6 @@ Console_Create(cart *Cart)
     Console->APU = APU_Create(Console);
     Console->PPU = PPU_Create(Console);
     Console->CPU = CPU_Create(Console);
+    Console_Power(Console);
     return Console;
 }

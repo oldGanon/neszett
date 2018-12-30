@@ -475,17 +475,27 @@ PPU_EnterVBlank(ppu *PPU)
     PPU->Status |= PPU_VBLANK;
     if (PPU->Controle & PPU_VBLANKNMI)
         Console_TriggerNMI(PPU->Console);
+#if !(OPENGL_USETEXTUREBUFFER)
     if (PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG))
     {
-        // Memory_Copy(GlobalScreen, PPU->Screen[7], 260*226);
+        Memory_Copy(GlobalScreen, PPU->Screen[7], 260*226);
         Atomic_Set(&GlobalScreenChanged, 1);
     }
+#endif
 }
 
 inline void
 PPU_LeaveVBlank(ppu *PPU)
 {
     PPU->Status &= ~(PPU_VBLANK | PPU_SPRHIT);
+
+    u32 Phase = Atomic_Get(&GlobalPhase);
+    if (PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG))
+        Phase = Phase ^ 1;
+    else
+        Phase = ++Phase % 3;
+    Atomic_Set(&GlobalPhase, Phase);
+    Atomic_Inc(&GlobalFrame);
 }
 
 inline void
@@ -593,14 +603,19 @@ PPU_Reset(ppu *PPU)
     PPU->Scanline = 240;
 }
 
+static void
+PPU_Power(ppu *PPU)
+{
+    PPU->OAMAddr = 0;
+    PPU->V = 0;
+    PPU->Status = 0xBF;
+    PPU_Reset(PPU);
+}
+
 static ppu*
 PPU_Create(console *Console)
 {
     ppu *PPU = (ppu *)Api_Malloc(sizeof(ppu));
     PPU->Console = Console;
-    PPU->OAMAddr = 0;
-    PPU->V = 0;
-    PPU->Status = 0xBF;
-    PPU_Reset(PPU);
     return PPU;
 }

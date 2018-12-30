@@ -2,7 +2,7 @@
 #include "platform.h"
 
 #define ORG_NAME "oldGanon"
-#define GAME_NAME "NESzett"
+#define GAME_NAME "neszett"
 #define VERSION 0
 
 struct cpuid

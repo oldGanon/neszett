@@ -172,11 +172,95 @@ Input_Init(input *Input)
 
         Keyname = TString_Null(Keyname);
         u32 Code = SDL_GetKeyFromName(Keyname.Data);
-        if (Code > 255) continue;
+        if (Code == SDLK_UNKNOWN) continue;
         u8 NesButton = Input_NESButtonFromName(Key);
         if (NesButton == 0xFF) continue;
         Input->Buttons[NesButton] = Code;
     }
 
     Api_Free(Data);
+}
+
+static b32
+Input_LoadFM2(string Filename)
+{
+    mi Length;
+    void *Data = File_ReadEntireFile(Filename, &Length);
+    if (!Data) return false;
+
+    string File = String((char *)Data, Length);
+
+    b32 Binary = 0;
+    while (!String_StartsWith(File, S("|")))
+    {
+        string Line = String_SplitLeft(&File, '\n');
+        string Key = String_SplitLeft(&Line, ' ');
+
+        if (Key == S("version"))
+        {
+            if (!String_StartsWith(Line, S("3")))
+            {
+                Api_Free(Data);
+                return false;
+            }
+        }
+        // else if (Key == S("emuVersion"));
+        // else if (Key == S("rerecordCount"));
+        // else if (Key == S("palFlag"));
+        // else if (Key == S("NewPPU"));
+        // else if (Key == S("FDS"));
+        // else if (Key == S("fourscore"));
+        // else if (Key == S("port0"));
+        // else if (Key == S("port1"));
+        // else if (Key == S("port2"));
+        else if (Key == S("binary"))
+        {
+            if (String_StartsWith(Line, S("true")))
+                Binary = true;
+        }
+        // else if (Key == S("length"));
+        // else if (Key == S("romFilename"));
+        // else if (Key == S("comment"));
+        // else if (Key == S("subtitle"));
+        // else if (Key == S("guid"));
+        // else if (Key == S("romChecksum"));
+        // else if (Key == S("savestate"));
+    }
+
+    if (Binary)
+    {
+
+    }
+    else
+    {
+        u32 FrameCount = 0;
+        string InputLog = File;
+        while (InputLog.Length)
+        {
+            ++FrameCount;
+            string Line = String_SplitLeft(&InputLog, '\n');
+        }
+
+        GlobalMovie = (u8 *)Api_Malloc(FrameCount);
+        u8 *Frame = GlobalMovie;
+        InputLog = File;
+        while (InputLog.Length)
+        {
+            string Line = String_SplitLeft(&InputLog, '\n');
+            String_SplitLeft(&Line, '|');
+            String_SplitLeft(&Line, '|');
+            Line = String_SplitLeft(&Line, '|');
+
+            *Frame = 0;
+            for (u32 i = 0; i < 8; ++i)
+                if (Line.Data[i] != ' ' && Line.Data[i] != '.')
+                    *Frame |= 0x80 >> i;
+
+            ++Frame;
+        }
+    }
+
+    Api_Free(Data);
+
+    return true;
 }

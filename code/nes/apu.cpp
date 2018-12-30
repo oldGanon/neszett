@@ -50,6 +50,7 @@ struct apu_square
     apu_sweep Sweep;
     apu_duty Duty;
     u8 Length;
+    u8 Enabled;
 };
 
 struct apu_triangle
@@ -60,6 +61,7 @@ struct apu_triangle
     u8 Halt;
     u8 Length;
     u8 Sequence;
+    u8 Enabled;
 };
 
 struct apu_noise
@@ -69,6 +71,7 @@ struct apu_noise
     u16 Shift;
     u8 Length;
     u8 Mode;
+    u8 Enabled;
 };
 
 struct apu_dmc
@@ -83,6 +86,7 @@ struct apu_dmc
     u8 Volume;
     u8 BitCount;
     u8 Samples;
+    u8 Enabled;
 };
 
 struct apu
@@ -266,7 +270,8 @@ APU_WriteTimer(apu_square *Square, u8 Value)
 static void
 APU_WriteLength(apu_square *Square, u8 Value)
 {
-    Square->Length = APU_LengthLUT[Value >> 3];
+    if (Square->Enabled)
+        Square->Length = APU_LengthLUT[Value >> 3];
     Square->Timer.Period &= 0xFF;
     Square->Timer.Period |= ((u16)Value & 7) << 8;
     Square->Envelope.Write = 0xFF;
@@ -310,7 +315,8 @@ APU_WriteTimer(apu_triangle *Triangle, u8 Value)
 static void
 APU_WriteLength(apu_triangle *Triangle, u8 Value)
 {
-    Triangle->Length = APU_LengthLUT[Value >> 3];
+    if (Triangle->Enabled)
+        Triangle->Length = APU_LengthLUT[Value >> 3];
     Triangle->Timer.Period &= 0xFF;
     Triangle->Timer.Period |= ((u16)Value & 7) << 8;
     Triangle->Timer.Counter = Triangle->Timer.Period;
@@ -350,7 +356,8 @@ APU_WriteMode(apu_noise *Noise, u8 Value)
 static void
 APU_WriteLength(apu_noise *Noise, u8 Value)
 {
-    Noise->Length = APU_LengthLUT[Value >> 3];
+    if (Noise->Enabled)
+        Noise->Length = APU_LengthLUT[Value >> 3];
     Noise->Envelope.Write = 0xFF;
 }
 
@@ -359,8 +366,10 @@ APU_WriteLength(apu_noise *Noise, u8 Value)
 //
 
 static void
-APU_WriteMode(apu_dmc *DMC, u8 Value)
+APU_WriteMode(apu_dmc *DMC, console *Console, u8 Value)
 {
+    if (!(Value & 0x80))
+        Console_ClearIRQ(Console, IRQ_SOURCE_DMC);
     DMC->Flags = Value & 0xC0;
     DMC->Period = APU_DMCLUT[Value&0xF];
 }
@@ -380,7 +389,8 @@ APU_WriteAddress(apu_dmc *DMC, u8 Value)
 static void 
 APU_WriteLength(apu_dmc *DMC, u8 Value)
 {
-    DMC->Length = ((u16)Value << 4) | 1;
+    if (DMC->Enabled)
+        DMC->Length = ((u16)Value << 4) | 1;
 }
 
 static void 
@@ -405,7 +415,10 @@ APU_TimerStep(apu_dmc *DMC, console *Console)
             if (DMC->Flags & 0x40)
                 APU_Reset(DMC);
             else if (DMC->Flags & 0x80)
-                Console->APU->FramCounter |= 0x40;
+            {
+                Console->APU->FramCounter |= 0x80;
+                Console_SetIRQ(Console, IRQ_SOURCE_DMC);
+            }
         }
     }
     if (--DMC->Counter == 0)
@@ -478,18 +491,17 @@ APU_StepLength(apu *APU)
 static void
 APU_IRQ(apu *APU)
 {
-    APU->Status |= 0x40;
-    // if (APU->FramCounter & 0x40)
-    //     Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
+    if (!(APU->FramCounter & 0x40))
+    {
+        APU->Status |= 0x40;
+        Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
+    }
 }
 
 static void
 APU_SequencerStep(apu *APU)
 {
-    APU->Sequencer = 0;
     u8 Mode = (APU->FramCounter & 0x80) ? 5 : 4;
-    ++APU->SequenceCounter;
-    APU->SequenceCounter %= Mode;
     if (Mode == 4)
     {
         switch (APU->SequenceCounter)
@@ -514,6 +526,8 @@ APU_SequencerStep(apu *APU)
             default: break;
         }
     }
+    ++APU->SequenceCounter;
+    APU->SequenceCounter %= Mode;
 }
 
 static b32
@@ -552,8 +566,10 @@ APU_TimerStep(apu *APU)
 static void
 APU_Step(apu *APU)
 {
-    if (++APU->Sequencer >= APU_SEQU_CPU_HZ)
-        APU_SequencerStep(APU);
+    f64 SequencerDivider = 240.0 / CPU_HZ;
+    u64 Cycle0 = (u64)(APU->Sequencer * SequencerDivider);
+    u64 Cycle1 = (u64)(++APU->Sequencer * SequencerDivider);
+    if (Cycle0 < Cycle1) APU_SequencerStep(APU);
     APU_TimerStep(APU);
 
     if (++APU->DAC >= APU_DAC_CPU_HZ)
@@ -567,14 +583,19 @@ APU_Step(apu *APU)
 inline void
 APU_WriteStatus(apu *APU, u8 Value)
 {
-    APU->Status &= ~0x40;
+    APU->Status &= 0x40;
     APU->Status |= Value & 0x1f;
 
-    if (!(Value & 0x01)) APU->Square[0].Length = 0;
-    if (!(Value & 0x02)) APU->Square[1].Length = 0;
-    if (!(Value & 0x04)) APU->Triangle.Length = 0;
-    if (!(Value & 0x08)) APU->Noise.Length = 0;
-    if (!(Value & 0x10)) APU->DMC.Length = 0;
+    APU->Square[0].Enabled = Value & 0x01;
+    APU->Square[1].Enabled = Value & 0x02;
+    APU->Triangle.Enabled = Value & 0x04;
+    APU->Noise.Enabled = Value & 0x08;
+    APU->DMC.Enabled = Value & 0x10;
+    if (!APU->Square[0].Enabled) APU->Square[0].Length = 0;
+    if (!APU->Square[1].Enabled) APU->Square[1].Length = 0;
+    if (!APU->Triangle.Enabled)  APU->Triangle.Length = 0;
+    if (!APU->Noise.Enabled)     APU->Noise.Length = 0;
+    if (!APU->DMC.Enabled)       APU->DMC.Length = 0;
     else APU_Reset(&APU->DMC);
 }
 
@@ -586,6 +607,8 @@ APU_WriteFrameCounter(apu *APU, u8 Value)
     APU->FramCounter = Value;
     if (APU->FramCounter & 0x80)
         APU_SequencerStep(APU);
+    if (APU->FramCounter & 0x40)
+        APU->Status &= ~0x40;
 }
 
 static void
@@ -613,7 +636,7 @@ APU_WriteRegister(apu *APU, u16 Address, u8 Value)
         case 0x400E: APU_WriteMode(&APU->Noise, Value); break;
         case 0x400F: APU_WriteLength(&APU->Noise, Value); break;
 
-        case 0x4010: APU_WriteMode(&APU->DMC, Value); break;
+        case 0x4010: APU_WriteMode(&APU->DMC, APU->Console, Value); break;
         case 0x4011: APU_WriteDAC(&APU->DMC, Value); break;
         case 0x4012: APU_WriteAddress(&APU->DMC, Value); break;
         case 0x4013: APU_WriteLength(&APU->DMC, Value); break;
@@ -631,13 +654,15 @@ APU_WriteRegister(apu *APU, u16 Address, u8 Value)
 static u8
 APU_ReadStatuts(apu *APU)
 {
-    u8 S = APU->Status * 0xC0;
+    Console_ClearIRQ(APU->Console, IRQ_SOURCE_APU);
+
+    u8 S = APU->Status & 0xC0;
     APU->Status &= ~0x40;
     if (APU->Square[0].Length) S |= 0x01;
     if (APU->Square[1].Length) S |= 0x02;
     if (APU->Triangle.Length)  S |= 0x04;
     if (APU->Noise.Length)     S |= 0x08;
-    if (APU->DMC.Length)      S |= 0x10;
+    if (APU->DMC.Length)       S |= 0x10;
     return S;
 }
 
@@ -665,10 +690,18 @@ APU_Reset(apu *APU)
     APU->Even = 0;
     APU->Status = 0;
     APU_WriteRegister(APU, 0x4015, 0);
-    for (u8 i = 0; i < 0xF; ++i)
-        APU_WriteRegister(APU, 0x4000 + i, 0);
+    // for (u8 i = 0; i < 0xF; ++i)
+    //     APU_WriteRegister(APU, 0x4000 + i, 0);
 
     APU->RunningAverage = 159.79f / (1.0f / (1.5f / 8227.0f) + 100.0f);
+}
+
+static void
+APU_Power(apu *APU)
+{
+    APU->FramCounter = 0;
+    APU->Noise.Shift = 1;
+    APU_Reset(APU);
 }
 
 static apu*
@@ -676,8 +709,5 @@ APU_Create(console *Console)
 {
     apu *APU = (apu *)Api_Malloc(sizeof(apu));
     APU->Console = Console;
-    APU->FramCounter = 0;
-    APU->Noise.Shift = 1;
-    APU_Reset(APU);
     return APU;
 }

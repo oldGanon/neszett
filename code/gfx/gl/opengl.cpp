@@ -9,11 +9,11 @@ struct gl_state
     u32 SquareVAO;
     u32 SquareVBO;
     u32 BlitShader;
-    u32 NtscShader[6];
+    u32 NtscShader[4];
+    u32 NtscPhaseUniform[2];
     u32 NtscTextures[3];
     u32 NtscFramebuffer;
     ivec2 WindowDim;
-    u32 Frame;
 };
 
 global gl_state GL = { };
@@ -148,11 +148,7 @@ OpenGL_Blit(ivec2 WindowDim)
 static void
 OpenGL_Frame(u8 *Screen)
 {
-    GL.Frame++;
-#if OPENGL_USETEXTUREBUFFER
-    // glBindBuffer(GL_TEXTURE_BUFFER, GL.TBO);
-    // glBufferSubData(GL_TEXTURE_BUFFER, 0, 260 * 226, Screen);
-#else
+#if !(OPENGL_USETEXTUREBUFFER)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, GL.Texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 258, 226, GL_RED, GL_UNSIGNED_BYTE, Screen);

@@ -27,14 +27,18 @@ global string PrefPath = { };
 #define CPU_DIVIDER 12
 #define CPU_HZ 1789773 // (SYSTEM_HZ / CPU_DIVIDER)
 
-global atomic GlobalScreenChanged;
 #if OPENGL_USETEXTUREBUFFER
-    global u8 *GlobalScreen;
+  global u8 *GlobalScreen;
 #else
-    global u8 GlobalScreen[226][260];
+  global atomic GlobalScreenChanged;
+  global u8 GlobalScreen[226][260];
 #endif
 global SDL_AudioDeviceID GlobalAudioDevice = 0;
 global u8 GlobalGamepad;
+global atomic GlobalFrame;
+global atomic GlobalPhase;
+
+global u8 *GlobalMovie;
 
 #include "nes/console.cpp"
 
@@ -282,6 +286,8 @@ Api_PrintString(u32 Target, string String)
 inline u8
 Api_GetGamepad()
 {
+    if (GlobalMovie)
+        return GlobalMovie[Atomic_Get(&GlobalFrame)];
     return GlobalGamepad;
 }
 
@@ -339,6 +345,100 @@ Main_GetMillisecondsElapsed(u64 Start, u64 End)
     u64 Result = ((End - Start) * 1000) / GlobalPerfCountFrequency;
     return Result;
 }
+
+/*--------------*/
+/*     NES      */
+/*--------------*/
+
+static i32
+NES_Thread(void *Data)
+{
+    f64 TargetTimePerUpdate = GlobalPerfCountFrequency / (f64)CPU_HZ;
+    f64 LastTime = (f64)Main_GetWallClock();
+
+    while (GlobalRunning)
+    {
+        Console_Step(GlobalConsole);
+
+        /* TIMING */
+        f64 TargetTime = LastTime + TargetTimePerUpdate;
+        f64 CurrentTime = (f64)Main_GetWallClock();
+        while (CurrentTime < TargetTime)
+            CurrentTime = (f64)Main_GetWallClock();
+        LastTime = TargetTime;
+    }
+
+    return 1;
+}
+
+static void
+NES_Pause(main_state *MainState)
+{
+    if (!GlobalConsole) return;
+    if (!MainState->NESThread.Handle) return;
+
+    SDL_ClearQueuedAudio(GlobalAudioDevice);
+    GlobalRunning = false;
+    Thread_Wait(MainState->NESThread);
+    MainState->NESThread.Handle = 0;
+    GlobalRunning = true;
+}
+
+static void
+NES_Resume(main_state *MainState)
+{
+    if (!GlobalConsole) return;
+    if (MainState->NESThread.Handle) return;
+
+    SDL_ClearQueuedAudio(GlobalAudioDevice);
+    MainState->NESThread = Thread_Create(NES_Thread, 0);
+}
+
+static void
+NES_Reset(main_state *MainState)
+{
+    NES_Pause(MainState);
+    if (GlobalConsole)
+        Console_Reset(GlobalConsole);
+    NES_Resume(MainState);
+}
+
+static void
+NES_Power(main_state *MainState)
+{
+    NES_Pause(MainState);
+    if (GlobalConsole)
+        Console_Power(GlobalConsole);
+    NES_Resume(MainState);
+}
+
+static void
+NES_Create(main_state *MainState, string Filename)
+{
+    string Savename = Filename;
+    Savename.Length -= 4;
+    Savename = String_SplitRight(&Savename, '\\');
+    Savename = TString_Concat(PrefPath, Savename, S(".sav"));
+    cart *Cart = iNes_Load(Filename, Savename);
+    if (!Cart) return;
+    console *Console = Console_Create(Cart);
+    if (Console)
+    {
+        if (MainState->NESThread.Handle)
+        {
+            GlobalRunning = false;
+            Thread_Wait(MainState->NESThread);
+            GlobalRunning = true;
+        }
+        if (GlobalConsole) Console_Free(GlobalConsole);
+        GlobalConsole = Console;
+        MainState->NESThread = Thread_Create(NES_Thread, 0);
+    }
+}
+
+/*--------------*/
+/*    WINDOW    */
+/*--------------*/
 
 static ivec2
 Main_GetWindowSize(SDL_Window *Window)
@@ -522,68 +622,6 @@ Main_CreateVulkanWindow(iv2 Resolution)
 }
 #endif
 
-static i32
-NES_Thread(void *Data)
-{
-    f64 TargetTimePerUpdate = GlobalPerfCountFrequency / (f64)CPU_HZ;
-    f64 LastTime = (f64)Main_GetWallClock();
-
-    while (GlobalRunning)
-    {
-        Console_Step(GlobalConsole);
-
-        /* TIMING */
-        f64 TargetTime = LastTime + TargetTimePerUpdate;
-        f64 CurrentTime = (f64)Main_GetWallClock();
-        while (CurrentTime < TargetTime)
-            CurrentTime = (f64)Main_GetWallClock();
-        LastTime = TargetTime;
-    }
-
-    return 1;
-}
-
-static void
-NES_Reset(main_state *MainState)
-{
-    if (GlobalConsole)
-    {
-        SDL_ClearQueuedAudio(GlobalAudioDevice);
-        if (MainState->NESThread.Handle)
-        {
-            GlobalRunning = false;
-            Thread_Wait(MainState->NESThread);
-            GlobalRunning = true;
-        }
-        Console_Reset(GlobalConsole);
-        MainState->NESThread = Thread_Create(NES_Thread, 0);
-    }
-}
-
-static void
-NES_Create(main_state *MainState, string Filename)
-{
-    string Savename = Filename;
-    Savename.Length -= 4;
-    Savename = String_SplitRight(&Savename, '\\');
-    Savename = TString_Concat(PrefPath, Savename, S(".sav"));
-    cart *Cart = iNes_Load(Filename, Savename);
-    if (!Cart) return;
-    console *Console = Console_Create(Cart);
-    if (Console)
-    {
-        if (MainState->NESThread.Handle)
-        {
-            GlobalRunning = false;
-            Thread_Wait(MainState->NESThread);
-            GlobalRunning = true;
-        }
-        if (GlobalConsole) Console_Free(GlobalConsole);
-        GlobalConsole = Console;
-        MainState->NESThread = Thread_Create(NES_Thread, 0);
-    }
-}
-
 static u32
 Main_GetResizeRegion(SDL_Window *Window, ivec2 Coord)
 {
@@ -738,10 +776,20 @@ Main_CollectEvents(SDL_Window *Window, main_state *MainState)
             case SDL_DROPFILE:
             {
                 string Filename = String(Event.drop.file);
-                if (String_EndsWith(Filename, S(".nes")))
+                if (String_EndsWith(Filename, S(".nes")) ||
+                    String_EndsWith(Filename, S(".fc")))
+                {
                     NES_Create(MainState, Filename);
+                }
                 else if (String_EndsWith(Filename, S(".pal")))
+                {
                     OpenGL_LoadPalette(Filename);
+                }
+                else if (String_EndsWith(Filename, S(".fm2")))
+                {
+                    if (Input_LoadFM2(Filename))
+                        NES_Power(MainState);
+                }
                 SDL_free(Event.drop.file);
             } break;
 
@@ -936,6 +984,7 @@ int SDL_main(int argc, char **argv)
 
     SDL_ShowWindow(Window);
     SDL_RaiseWindow(Window);
+    SDL_DisableScreenSaver();
 
     /* INPUT */
     Input_Init(&MainState.Input);
@@ -954,8 +1003,10 @@ int SDL_main(int argc, char **argv)
         ARENA_STACK_MARKER(TempArena);
 
         Main_CollectEvents(Window, &MainState);
+#if !(OPENGL_USETEXTUREBUFFER)
         if (Atomic_Set(&GlobalScreenChanged, 0))
             OpenGL_Frame((u8 *)GlobalScreen);
+#endif
         OpenGL_Blit(Main_GetWindowSize(Window));
         SDL_GL_SwapWindow(Window);
         SDL_Delay(1);

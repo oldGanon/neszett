@@ -52,9 +52,3 @@ Gamepad_Free(gamepad *Gamepad)
 {
 	Api_Free(Gamepad);
 }
-
-inline void
-Gamepad_Reset(gamepad *Gamepad)
-{
-
-}

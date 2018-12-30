@@ -44,13 +44,14 @@ const char *NtscModulationShaderF =
 #else
     "uniform sampler2D " GLSL_UNIFORM_TEXTURE ";"
 #endif
-    "uniform float Odd;"
+    "uniform float Phase;"
     "const float Los[4] = float[4](0.350, 0.518, 0.962, 1.550);"
     "const float His[4] = float[4](1.094, 1.506, 1.962, 1.962);"
     "const float Black = 0.518;"
     "const float White = 1.962;"
     "void main(){"
-        "float n = floor(gl_FragCoord.x) - floor(mod(gl_FragCoord.y, 3.0)) * 4.0 + Odd * 4.0;"
+        "float n = floor(gl_FragCoord.x) - floor(mod(gl_FragCoord.y, 3.0)) * 4.0;"
+        "n += Phase * 8.0;"
 #if OPENGL_USETEXTUREBUFFER
         "vec2 F = clamp(UV, 0.0, 1.0);"
         "float Pixel = texelFetch(" GLSL_UNIFORM_TEXTURE ", int(F.x * 258.0) + int(F.y * 226.0) * 260).r * 255.0;"
@@ -64,8 +65,8 @@ const char *NtscModulationShaderF =
         "float Hi = His[Level];"
         "if (Color == 0.0) Lo = Hi;"
         "if (Color > 12.0) Hi = Lo;"
-        "float Phase = floor(mod(Color + n, 12.0) / 6.0);"
-        "float Signal = mix(Lo, Hi, Phase);"
+        "float High = floor(mod(Color + n, 12.0) / 6.0);"
+        "float Signal = mix(Lo, Hi, High);"
         "Signal = (Signal-Black) / (White-Black);"
         "gl_FragColor = vec4(Signal, 0.0, 0.0, 0.0);"
     "}\0";
@@ -77,11 +78,12 @@ const char *NtscDemodulationShaderF =
     "uniform sampler2D " GLSL_UNIFORM_NTSC ";"
     "uniform float LowpassLUT[" MACRO_STRING(FILTER_SIZE) "];"
     "uniform float BandpassLUT[" MACRO_STRING(FILTER_SIZE) "];"
-    "uniform float Odd;"
+    "uniform float Phase;"
     "const int FIR = " MACRO_STRING(FILTER_SIZE) ";"
     "const float PI = 3.14159265359;"
     "vec2 Osc(float x){"
-        "x -= mod(gl_FragCoord.y, 3.0) * 4.0 - 3.0 - Odd * 4.0;"
+        "x -= mod(gl_FragCoord.y, 3.0) * 4.0 - 3.0;"
+        "x += Phase * 8.0;"
         "x = x*(" MACRO_STRING(NTSC_CHROMA_CYCLES_PER_PIXEL) "*2.0*PI);"
         "return vec2(sin(x),-cos(x));"
     "}"
@@ -164,43 +166,32 @@ NTSC_Init()
 
     {   /* MODULATION SHADER */
         GL.NtscShader[0] = OpenGL_LoadProgram(BlitShaderFlippedV, NtscModulationShaderF);
-        GL.NtscShader[1] = OpenGL_LoadProgram(BlitShaderFlippedV, NtscModulationShaderF);
-        glUseProgram(GL.NtscShader[1]);
-        i32 UniformLocation = glGetUniformLocation(GL.NtscShader[1], "Odd");
-        if (UniformLocation != -1) glUniform1f(UniformLocation, 1.0f);
+        glUseProgram(GL.NtscShader[0]);
+        GL.NtscPhaseUniform[0] = glGetUniformLocation(GL.NtscShader[0], "Phase");
         glUseProgram(0);
     }
 
     {   /* DEMODULATION SHADER */
-        GL.NtscShader[2] = OpenGL_LoadProgram(BlitShaderV, NtscDemodulationShaderF);
-        glUseProgram(GL.NtscShader[2]);
-        i32 UniformLocation = glGetUniformLocation(GL.NtscShader[2], "LowpassLUT[0]");
+        GL.NtscShader[1] = OpenGL_LoadProgram(BlitShaderV, NtscDemodulationShaderF);
+        glUseProgram(GL.NtscShader[1]);
+        i32 UniformLocation = glGetUniformLocation(GL.NtscShader[1], "LowpassLUT[0]");
         if (UniformLocation != -1) glUniform1fv(UniformLocation, FILTER_SIZE, LP);
-        UniformLocation = glGetUniformLocation(GL.NtscShader[2], "BandpassLUT[0]");
+        UniformLocation = glGetUniformLocation(GL.NtscShader[1], "BandpassLUT[0]");
         if (UniformLocation != -1) glUniform1fv(UniformLocation, FILTER_SIZE, BP);
-        glUseProgram(0);
-
-        GL.NtscShader[3] = OpenGL_LoadProgram(BlitShaderV, NtscDemodulationShaderF);
-        glUseProgram(GL.NtscShader[3]);
-        UniformLocation = glGetUniformLocation(GL.NtscShader[3], "LowpassLUT[0]");
-        if (UniformLocation != -1) glUniform1fv(UniformLocation, FILTER_SIZE, LP);
-        UniformLocation = glGetUniformLocation(GL.NtscShader[3], "BandpassLUT[0]");
-        if (UniformLocation != -1) glUniform1fv(UniformLocation, FILTER_SIZE, BP);
-        UniformLocation = glGetUniformLocation(GL.NtscShader[3], "Odd");
-        if (UniformLocation != -1) glUniform1f(UniformLocation, 1.0);
+        GL.NtscPhaseUniform[1] = UniformLocation = glGetUniformLocation(GL.NtscShader[1], "Phase");
         glUseProgram(0);
     }
 
     {   /* CHROMA SHADER */
-        GL.NtscShader[4] = OpenGL_LoadProgram(BlitShaderV, NtscChromaShaderF);
-        glUseProgram(GL.NtscShader[4]);
-        i32 UniformLocation = glGetUniformLocation(GL.NtscShader[4], "LowpassLUT[0]");
+        GL.NtscShader[2] = OpenGL_LoadProgram(BlitShaderV, NtscChromaShaderF);
+        glUseProgram(GL.NtscShader[2]);
+        i32 UniformLocation = glGetUniformLocation(GL.NtscShader[2], "LowpassLUT[0]");
         if (UniformLocation != -1) glUniform1fv(UniformLocation, FILTER_SIZE, LP);
         glUseProgram(0);
     }
 
     {   /* CRT BLIT SHADER */
-        GL.NtscShader[5] = OpenGL_LoadProgram(BlitShaderFittedV, NtscBlitShaderF);
+        GL.NtscShader[3] = OpenGL_LoadProgram(BlitShaderFittedV, NtscBlitShaderF);
     }
 
     glGenFramebuffers(1, &GL.NtscFramebuffer);
@@ -234,25 +225,29 @@ NTSC_Init()
 static void
 NTSC_Blit(ivec2 WindowDim)
 {
+    f32 Phase = (f32)Atomic_Get(&GlobalPhase);
+
     /* MODULATE */
     glScissor(0, 0, 312 * 8, 226);
     glViewport(0, 0, 312 * 8, 226);
     glBindFramebuffer(GL_FRAMEBUFFER, GL.NtscFramebuffer);
-    glUseProgram(GL.NtscShader[GL.Frame&1]);
+    glUseProgram(GL.NtscShader[0]);
+    glUniform1f(GL.NtscPhaseUniform[0], Phase);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
                            GL_TEXTURE_2D, GL.NtscTextures[0], 0);
     OpenGL_DrawFullscreenQuad();
 
     /* DEMODULATE */
-    glUseProgram(GL.NtscShader[2|GL.Frame&1]);
+    glUseProgram(GL.NtscShader[1]);
     glActiveTexture(GL_TEXTURE0 + 2);
+    glUniform1f(GL.NtscPhaseUniform[1], Phase);
     glBindTexture(GL_TEXTURE_2D, GL.NtscTextures[0]);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
                            GL_TEXTURE_2D, GL.NtscTextures[1], 0);
     OpenGL_DrawFullscreenQuad();
 
     /* CHROMA */
-    glUseProgram(GL.NtscShader[4]);
+    glUseProgram(GL.NtscShader[2]);
     glBindTexture(GL_TEXTURE_2D, GL.NtscTextures[1]);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
                            GL_TEXTURE_2D, GL.NtscTextures[2], 0);
@@ -261,10 +256,9 @@ NTSC_Blit(ivec2 WindowDim)
     /* BLIT */
     glViewport(0, 0, WindowDim.x, WindowDim.y);
     glScissor(0, 0, WindowDim.x, WindowDim.y);
-    glUseProgram(GL.NtscShader[5]);
-    if (WindowDim.x != GL.WindowDim.x ||
-        WindowDim.y != GL.WindowDim.y)
-        glUniform2f(glGetUniformLocation(GL.NtscShader[5], "WindowRes"), (f32)WindowDim.x, (f32)WindowDim.y);
+    glUseProgram(GL.NtscShader[3]);
+    if (WindowDim.x != GL.WindowDim.x || WindowDim.y != GL.WindowDim.y)
+        glUniform2f(glGetUniformLocation(GL.NtscShader[3], "WindowRes"), (f32)WindowDim.x, (f32)WindowDim.y);
     glBindTexture(GL_TEXTURE_2D, GL.NtscTextures[2]);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     OpenGL_DrawFullscreenQuad();

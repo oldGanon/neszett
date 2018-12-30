@@ -166,6 +166,13 @@ Cart_Reset(cart *Cart)
 }
 
 static void
+Cart_Power(cart *Cart)
+{
+    Memory_Set(Cart->Nametable[0], 0, 0x400);
+    Memory_Set(Cart->Nametable[3], 0, 0x400);
+}
+
+static void
 Cart_SetMirroring(cart *Cart, u8 Mirroring)
 {
     switch (Mirroring)
