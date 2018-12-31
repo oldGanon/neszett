@@ -514,8 +514,9 @@ APU_SequencerStep(apu *APU)
     {   // mode 0 (4)
         switch (APU->Sequencer++)
         {
+            case 29830: APU->Sequencer = 1;
             case 29828: APU_IRQ(APU); break;
-            case 29829: APU->Sequencer = 0;
+            case 29829: APU_IRQ(APU);
             case 14913: APU_StepLength(APU);
                         APU_StepSweep(APU);
             case  7457: 
