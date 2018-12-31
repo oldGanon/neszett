@@ -498,9 +498,20 @@ APU_IRQ(apu *APU)
 static void
 APU_SequencerStep(apu *APU)
 {
-    u8 Mode = (APU->FramCounter & 0x80) ? 5 : 4;
-    if (Mode == 4)
-    {
+    if (APU->FramCounter & 0x80)
+    {   // mode 1 (5)
+        switch (APU->Sequencer++)
+        {
+            case 37281: APU->Sequencer = 0;
+            case 14913: APU_StepLength(APU);
+                        APU_StepSweep(APU);
+            case  7457:
+            case 22371: APU_StepEnvelope(APU);
+                        APU_StepTriangle(APU);
+        }
+    }
+    else
+    {   // mode 0 (4)
         switch (APU->Sequencer++)
         {
             case 29828: APU_IRQ(APU); break;
@@ -510,20 +521,6 @@ APU_SequencerStep(apu *APU)
             case  7457: 
             case 22371: APU_StepEnvelope(APU);
                         APU_StepTriangle(APU);
-        }
-    }
-    else
-    {
-        switch (APU->Sequencer++)
-        {
-            case 37282: APU->Sequencer = 0; break;
-            case  7457:
-            case 22371: APU_StepLength(APU);
-                        APU_StepSweep(APU);
-            case 14913:
-            case 37281: APU_StepEnvelope(APU);
-                        APU_StepTriangle(APU);
-            case 29828: break;
         }
     }
 }
@@ -565,7 +562,6 @@ static void
 APU_Step(apu *APU)
 {
     APU_SequencerStep(APU);
-    
     APU_TimerStep(APU);
 
     if (++APU->DAC >= APU_DAC_CPU_HZ)
@@ -584,26 +580,23 @@ APU_WriteStatus(apu *APU, u8 Value)
 
     APU->Square[0].Enabled = Value & 0x01;
     APU->Square[1].Enabled = Value & 0x02;
-    APU->Triangle.Enabled = Value & 0x04;
-    APU->Noise.Enabled = Value & 0x08;
-    APU->DMC.Enabled = Value & 0x10;
+    APU->Triangle.Enabled  = Value & 0x04;
+    APU->Noise.Enabled     = Value & 0x08;
+    APU->DMC.Enabled       = Value & 0x10;
     if (!APU->Square[0].Enabled) APU->Square[0].Length = 0;
     if (!APU->Square[1].Enabled) APU->Square[1].Length = 0;
-    if (!APU->Triangle.Enabled)  APU->Triangle.Length = 0;
-    if (!APU->Noise.Enabled)     APU->Noise.Length = 0;
-    if (!APU->DMC.Enabled)       APU->DMC.Length = 0;
+    if (!APU->Triangle.Enabled)  APU->Triangle.Length  = 0;
+    if (!APU->Noise.Enabled)     APU->Noise.Length     = 0;
+    if (!APU->DMC.Enabled)       APU->DMC.Length       = 0;
     else APU_Reset(&APU->DMC);
 }
 
 inline void
 APU_WriteFrameCounter(apu *APU, u8 Value)
 {
-    if (APU->Console->CPU->Cycles & 1)
-        APU->Sequencer = 0xFFFD;
-    else
-        APU->Sequencer = 0xFFFE;
-
-    APU->FramCounter = Value;
+    APU->Sequencer = 0xFFFE;
+    
+    APU->FramCounter = Value & 0xC0;
     if (APU->FramCounter & 0x80)
     {
         APU_StepLength(APU);
@@ -611,6 +604,10 @@ APU_WriteFrameCounter(apu *APU, u8 Value)
         APU_StepEnvelope(APU);
         APU_StepTriangle(APU);
     }
+    
+    if (APU->Console->CPU->Cycles & 1)
+        --APU->Sequencer;
+
     if (APU->FramCounter & 0x40)
     {
         APU->Status &= ~0x40;
