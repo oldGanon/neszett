@@ -68,11 +68,18 @@ struct ppu
     u8 LowTile;
     u8 HighTile;
     u8 SpriteCount;
+    u8 NMI;
     u8 OAM2[32];
     u32 Sprites[8];
     u32 SpritesIndices[8];
     u8 Screen[240][260];
 };
+
+inline void
+PPU_TriggerNMI(ppu *PPU)
+{
+    PPU->NMI = 14;
+}
 
 inline u8
 PPU_ReadPalette(ppu *PPU, u16 Address)
@@ -139,6 +146,11 @@ PPU_ReadRegister(ppu *PPU, u16 Address)
 inline void
 PPU_WriteControle(ppu *PPU, u8 Value)
 {
+    if (PPU->Status & PPU_VBLANK &&
+        !(PPU->Controle & PPU_VBLANKNMI) &&
+        Value & PPU_VBLANKNMI)
+        PPU_TriggerNMI(PPU);
+
     PPU->Controle = Value;
     PPU->T &= ~0xC00;
     PPU->T |= ((u16)Value & 0x3) << 10;
@@ -474,7 +486,7 @@ PPU_EnterVBlank(ppu *PPU)
 {
     PPU->Status |= PPU_VBLANK;
     if (PPU->Controle & PPU_VBLANKNMI)
-        Console_TriggerNMI(PPU->Console);
+        PPU_TriggerNMI(PPU);
 #if !(OPENGL_USETEXTUREBUFFER)
     if (PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG))
     {
@@ -482,6 +494,7 @@ PPU_EnterVBlank(ppu *PPU)
         Atomic_Set(&GlobalScreenChanged, 1);
     }
 #endif
+    Atomic_Inc(&GlobalFrame);
 }
 
 inline void
@@ -495,12 +508,14 @@ PPU_LeaveVBlank(ppu *PPU)
     else
         Phase = ++Phase % 3;
     Atomic_Set(&GlobalPhase, Phase);
-    Atomic_Inc(&GlobalFrame);
 }
 
 inline void
 PPU_Step(ppu *PPU)
 {
+    if (PPU->NMI && --PPU->NMI == 0)
+        Console_TriggerNMI(PPU->Console);
+
     b32 Draw = PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG);
 
     if (Draw && PPU->Odd && PPU->Scanline == 261 && PPU->Cycles == 339)
@@ -513,8 +528,6 @@ PPU_Step(ppu *PPU)
         {
             PPU->Scanline = 0;
             PPU->Odd ^= 1;
-            if (PPU->Odd)
-                PPU->Cycles = 1;
         }
     }
 
