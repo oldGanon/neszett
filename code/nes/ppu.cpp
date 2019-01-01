@@ -540,7 +540,7 @@ PPU_Step(ppu *PPU)
 
     b32 Draw = PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG);
 
-    if (Draw && PPU->Odd && PPU->Scanline == 261 && PPU->Cycles == 339)
+    if (Draw && PPU->Odd && PPU->Scanline == 261 && PPU->Cycles == 337)
         ++PPU->Cycles;
 
     if (++PPU->Cycles > 340)
