@@ -7,3 +7,4 @@ cpu_reset: pass all
 instr_test-v3: pass all official
 instr_timing: pass all
 tvpassfail: pass all
+ppu_vbl_nmi: pass all

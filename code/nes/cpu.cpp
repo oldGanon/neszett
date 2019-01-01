@@ -5,6 +5,7 @@ struct cpu
     u64 Busy;
     u8 NMIOccurred;
     u8 IRQOccurred;
+    u8 IRQDelayed;
 
     u16 PC; // Program Counter
     u8 AC; // Accumulator
@@ -196,7 +197,7 @@ inline void BRK(cpu *CPU, u16 Address)
 // Clear Flag
 inline void CLC(cpu *CPU, u16 Address) { CPU->SR &= ~(STATUS_CARRY); }
 inline void CLD(cpu *CPU, u16 Address) { CPU->SR &= ~(STATUS_DECIMAL); }
-inline void CLI(cpu *CPU, u16 Address) { CPU->SR &= ~(STATUS_INTERRUPT); }
+inline void CLI(cpu *CPU, u16 Address) { if (CPU->SR & STATUS_INTERRUPT) { CPU->SR &= ~(STATUS_INTERRUPT); CPU->IRQDelayed = CPU->IRQOccurred; } }
 inline void CLV(cpu *CPU, u16 Address) { CPU->SR &= ~(STATUS_OVERFLOW); }
 
 inline void CPU_Compare(cpu *CPU, u8 Register, u16 Address)
@@ -291,7 +292,13 @@ inline void ORA(cpu *CPU, u16 Address) { CPU->AC |= CPU_Read(CPU, Address); CPU_
 inline void PHA(cpu *CPU, u16 Address) { CPU_Push(CPU, CPU->AC); }
 inline void PHP(cpu *CPU, u16 Address) { CPU_Push(CPU, CPU->SR | 0x30); }
 inline void PLA(cpu *CPU, u16 Address) { CPU->AC = CPU_Pull(CPU); CPU_UpdateFlagsNZ(CPU, CPU->AC);}
-inline void PLP(cpu *CPU, u16 Address) { CPU->SR = CPU_Pull(CPU) | STATUS_; }
+inline void PLP(cpu *CPU, u16 Address)
+{
+    u8 NewFlags = CPU_Pull(CPU) | STATUS_;
+    if ((CPU->SR ^ NewFlags) & STATUS_INTERRUPT)
+        CPU->IRQDelayed = CPU->IRQOccurred;
+    CPU->SR = NewFlags;
+}
 
 // Rotate Memory One Bit Left
 inline void ROL(cpu *CPU, u16 Address)
@@ -389,7 +396,7 @@ inline void SBC(cpu *CPU, u16 Address)
 // Set Flags
 inline void SEC(cpu *CPU, u16 Address) { CPU->SR |= STATUS_CARRY; }
 inline void SED(cpu *CPU, u16 Address) { CPU->SR |= STATUS_DECIMAL; }
-inline void SEI(cpu *CPU, u16 Address) { CPU->SR |= STATUS_INTERRUPT; }
+inline void SEI(cpu *CPU, u16 Address) { if (!(CPU->SR & STATUS_INTERRUPT)) { CPU->SR |= STATUS_INTERRUPT; CPU->IRQDelayed = CPU->IRQOccurred; } }
 
 // Store Accumulator in Memory
 inline void STA(cpu *CPU, u16 Address) { CPU_Write(CPU, Address, CPU->AC); }
@@ -513,8 +520,8 @@ inline void NMI(cpu *CPU)
 // Interrupt
 inline void IRQ(cpu *CPU)
 {
-    if (CPU->SR & STATUS_INTERRUPT) return;
-    CPU->IRQOccurred = 0;
+    if (CPU->IRQDelayed && !(CPU->SR & STATUS_INTERRUPT)) return;
+    if (!CPU->IRQDelayed && CPU->SR & STATUS_INTERRUPT) return;
     CPU_Push(CPU, CPU->PC >> 8);
     CPU_Push(CPU, CPU->PC & 0xFF);
     CPU_Push(CPU, CPU->SR);
@@ -533,6 +540,8 @@ inline void CPU_Step(cpu *CPU)
         NMI(CPU);
     else if (CPU->IRQOccurred)
         IRQ(CPU);
+
+    CPU->IRQDelayed = 0;
 
     u8 Op = CPU_NextByte(CPU);
     u16 Address = 0;
