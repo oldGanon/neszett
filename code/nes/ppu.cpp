@@ -69,6 +69,7 @@ struct ppu
     u8 HighTile;
     u8 SpriteCount;
     u8 NMI;
+    u8 SuppressVBL;
     u8 OAM2[32];
     u32 Sprites[8];
     u32 SpritesIndices[8];
@@ -104,7 +105,14 @@ PPU_ReadStatus(ppu *PPU)
 {
     PPU->W = 0;
     u8 S = PPU->Status;
-    PPU->Status &= 0x7F;
+    PPU->Status &= ~PPU_VBLANK;
+    if (PPU->Scanline == 241)
+    {
+        if (PPU->Cycles == 0)
+            PPU->SuppressVBL = true;
+        if (PPU->Cycles <= 2)
+            PPU->NMI = 0;
+    } 
     return S;
 }
 
@@ -146,11 +154,19 @@ PPU_ReadRegister(ppu *PPU, u16 Address)
 inline void
 PPU_WriteControle(ppu *PPU, u8 Value)
 {
-    if (PPU->Status & PPU_VBLANK &&
-        !(PPU->Controle & PPU_VBLANKNMI) &&
-        Value & PPU_VBLANKNMI)
-        PPU_TriggerNMI(PPU);
-
+    if (!(Value & PPU_VBLANKNMI))
+    {
+        if (PPU->NMI > 12)
+            PPU->NMI = 0;
+    }
+    else 
+    {
+        if (PPU->Scanline != 261 && 
+            PPU->Cycles != 0 && 
+            !(PPU->Controle & PPU_VBLANKNMI) &&
+            PPU->Status & PPU_VBLANK)
+                PPU_TriggerNMI(PPU);
+    }
     PPU->Controle = Value;
     PPU->T &= ~0xC00;
     PPU->T |= ((u16)Value & 0x3) << 10;
@@ -484,9 +500,16 @@ PPU_CopyHoriV(ppu *PPU)
 inline void
 PPU_EnterVBlank(ppu *PPU)
 {
-    PPU->Status |= PPU_VBLANK;
-    if (PPU->Controle & PPU_VBLANKNMI)
-        PPU_TriggerNMI(PPU);
+    Atomic_Inc(&GlobalFrame);
+
+    if (!PPU->SuppressVBL)
+    {
+        PPU->Status |= PPU_VBLANK;
+        if (PPU->Controle & PPU_VBLANKNMI)
+            PPU_TriggerNMI(PPU);
+    }
+    PPU->SuppressVBL = false;
+
 #if !(OPENGL_USETEXTUREBUFFER)
     if (PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG))
     {
@@ -494,7 +517,6 @@ PPU_EnterVBlank(ppu *PPU)
         Atomic_Set(&GlobalScreenChanged, 1);
     }
 #endif
-    Atomic_Inc(&GlobalFrame);
 }
 
 inline void
