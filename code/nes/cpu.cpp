@@ -29,6 +29,8 @@ enum status_flags
     STATUS_CARRY     = 1 << 0,
 };
 
+inline void CPU_OP(cpu *CPU);
+
 inline void
 CPU_DMA(cpu *CPU, u8 Value)
 {
@@ -189,9 +191,16 @@ inline void BRK(cpu *CPU, u16 Address)
     ++CPU->PC;
     CPU_Push(CPU, CPU->PC >> 8);
     CPU_Push(CPU, CPU->PC & 0xFF);
-    CPU_Push(CPU, CPU->SR | 0x30);
+    CPU_Push(CPU, CPU->SR | STATUS_ | STATUS_BREAK);
     CPU->PC = CPU_ReadWord(CPU, 0xFFFE);
     CPU->SR |= STATUS_INTERRUPT;
+    if (CPU->Console->PPU->NMI)
+    {
+        CPU->NMIOccurred = 0;
+        CPU->Console->PPU->NMI = 0;
+        CPU->PC = CPU_ReadWord(CPU, 0xFFFA);
+    }
+    CPU_OP(CPU);
 }
 
 // Clear Flag
@@ -290,11 +299,11 @@ inline void ORA(cpu *CPU, u16 Address) { CPU->AC |= CPU_Read(CPU, Address); CPU_
 
 // Stack Operations
 inline void PHA(cpu *CPU, u16 Address) { CPU_Push(CPU, CPU->AC); }
-inline void PHP(cpu *CPU, u16 Address) { CPU_Push(CPU, CPU->SR | 0x30); }
+inline void PHP(cpu *CPU, u16 Address) { CPU_Push(CPU, CPU->SR | STATUS_ | STATUS_BREAK); }
 inline void PLA(cpu *CPU, u16 Address) { CPU->AC = CPU_Pull(CPU); CPU_UpdateFlagsNZ(CPU, CPU->AC);}
 inline void PLP(cpu *CPU, u16 Address)
 {
-    u8 NewFlags = CPU_Pull(CPU) | STATUS_;
+    u8 NewFlags = CPU_Pull(CPU) & ~(STATUS_ | STATUS_BREAK);
     if ((CPU->SR ^ NewFlags) & STATUS_INTERRUPT)
         CPU->IRQDelayed = CPU->IRQOccurred;
     CPU->SR = NewFlags;
@@ -360,7 +369,7 @@ inline void RORA(cpu *CPU, u16 Address)
 inline void RTI(cpu *CPU, u16 Address)
 {
     CPU->PC = 0;
-    CPU->SR = CPU_Pull(CPU) | STATUS_;
+    CPU->SR = CPU_Pull(CPU) & ~(STATUS_ | STATUS_BREAK);
     CPU->PC |= CPU_Pull(CPU) & 0xFF;
     CPU->PC |= CPU_Pull(CPU) << 8;
 }
@@ -511,7 +520,7 @@ inline void NMI(cpu *CPU)
     CPU->NMIOccurred = 0;
     CPU_Push(CPU, CPU->PC >> 8);
     CPU_Push(CPU, CPU->PC & 0xFF);
-    CPU_Push(CPU, CPU->SR);
+    CPU_Push(CPU, CPU->SR | STATUS_);
     CPU->PC = CPU_ReadWord(CPU, 0xFFFA);
     CPU->SR |= STATUS_INTERRUPT;
     CPU->Busy += 7;
@@ -524,10 +533,37 @@ inline void IRQ(cpu *CPU)
     if (!CPU->IRQDelayed && CPU->SR & STATUS_INTERRUPT) return;
     CPU_Push(CPU, CPU->PC >> 8);
     CPU_Push(CPU, CPU->PC & 0xFF);
-    CPU_Push(CPU, CPU->SR);
+    CPU_Push(CPU, CPU->SR | STATUS_);
     CPU->PC = CPU_ReadWord(CPU, 0xFFFE);
     CPU->SR |= STATUS_INTERRUPT;
     CPU->Busy += 7;
+}
+
+inline void CPU_OP(cpu *CPU)
+{
+    u8 Op = CPU_NextByte(CPU);
+    u16 Address = 0;
+    b32 PageCross = false;
+    u8 AddressMode = OpAdressModes[Op];
+    switch (AddressMode)
+    {
+        case CPU_AM_IMPL: break;
+        case CPU_AM_ACC:  break;
+        case CPU_AM_ABS:  Address = CPU_Abs(CPU);  break;
+        case CPU_AM_ABSX: Address = CPU_AbsX(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->X);break;
+        case CPU_AM_ABSY: Address = CPU_AbsY(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->Y); break;
+        case CPU_AM_IMM:  Address = CPU_Imm(CPU);  break;
+        case CPU_AM_IND:  Address = CPU_Ind(CPU);  break;
+        case CPU_AM_XIND: Address = CPU_XInd(CPU); break;
+        case CPU_AM_INDY: Address = CPU_IndY(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->Y); break;
+        case CPU_AM_REL:  Address = CPU_Rel(CPU);  break;
+        case CPU_AM_ZPG:  Address = CPU_Zpg(CPU);  break;
+        case CPU_AM_ZPGX: Address = CPU_ZpgX(CPU); break;
+        case CPU_AM_ZPGY: Address = CPU_ZpgY(CPU); break;
+    }
+    CPU->Busy += OpCycles[Op];
+    if (PageCross) CPU->Busy += OpPageCycles[Op];
+    Ops[OpCodes[Op]](CPU, Address);
 }
 
 inline void CPU_Step(cpu *CPU)
@@ -543,29 +579,7 @@ inline void CPU_Step(cpu *CPU)
 
     CPU->IRQDelayed = 0;
 
-    u8 Op = CPU_NextByte(CPU);
-    u16 Address = 0;
-    b32 PageCross = false;
-    u8 AddressMode = OpAdressModes[Op];
-    switch (AddressMode)
-    {
-        case CPU_AM_IMPL: break;
-        case CPU_AM_ACC:  break;
-        case CPU_AM_ABS:  Address = CPU_Abs(CPU); break;
-        case CPU_AM_ABSX: Address = CPU_AbsX(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->X);break;
-        case CPU_AM_ABSY: Address = CPU_AbsY(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->Y); break;
-        case CPU_AM_IMM:  Address = CPU_Imm(CPU); break;
-        case CPU_AM_IND:  Address = CPU_Ind(CPU); break;
-        case CPU_AM_XIND: Address = CPU_XInd(CPU); break;
-        case CPU_AM_INDY: Address = CPU_IndY(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->Y); break;
-        case CPU_AM_REL:  Address = CPU_Rel(CPU); break;
-        case CPU_AM_ZPG:  Address = CPU_Zpg(CPU); break;
-        case CPU_AM_ZPGX: Address = CPU_ZpgX(CPU); break;
-        case CPU_AM_ZPGY: Address = CPU_ZpgY(CPU); break;
-    }
-    CPU->Busy += OpCycles[Op];
-    if (PageCross) CPU->Busy += OpPageCycles[Op];
-    Ops[OpCodes[Op]](CPU, Address);
+    CPU_OP(CPU);
 }
 
 static void
@@ -590,7 +604,7 @@ CPU_Power(cpu *CPU)
     CPU->X = 0;
     CPU->Y = 0;
     CPU->SP = 0; 
-    CPU->SR = STATUS_ | STATUS_BREAK;
+    CPU->SR = 0;
     CPU_Reset(CPU);
 }
 

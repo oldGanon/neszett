@@ -2,7 +2,7 @@
 
 REM -Od disable Optimization
 REM -O2 Optimization [Release Mode]
-set OptimizationFlag=-Od
+set OptimizationFlag=-O2
 set CompilerFlags=-c -MT -nologo -GS- -Gs9999999 -Gm- -GR- -EHa- -Oi -W4 -wd4201 -wd4100 -wd4189 -wd4505 -FC -Z7 %OptimizationFlag%
 set NOCRT=-nodefaultlib kernel32.lib
 set LinkerFlags=-nologo -subsystem:windows -stack:0x100000,0x100000 -debug -pdb:neszett.pdb -out:neszett.exe -map:neszett.map -opt:ref /LIBPATH:"..\lib\x64" %NOCRT% opengl32.lib SDL2.lib SDL2main.lib icon.res

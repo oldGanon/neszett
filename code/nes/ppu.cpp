@@ -338,7 +338,7 @@ inline void
 PPU_SetPixel(ppu *PPU, u16 X, u16 Y, u8 Pixel)
 {
 #if OPENGL_USETEXTUREBUFFER
-    if (Y < 8 && Y > 232) return;
+    if (Y < 7 && 232 < Y) return;
     GlobalScreen[(Y-7) * 260 + X] = Pixel;
 #else
     PPU->Screen[Y][X] = Pixel;
@@ -351,12 +351,6 @@ PPU_DrawPixel(ppu *PPU)
     u16 X = PPU->Cycles - 1;
     u16 Y = PPU->Scanline;
     
-    if (Y < 8 || 232 <= Y)
-    {
-        PPU_SetPixel(PPU, X+1, Y, PPU->Palettes[0]);
-        return;
-    }
-
     u8 MaskBG = !(PPU->Mask & PPU_MASK_BGLEFT) && X < 8;
     u8 MaskSpr = !(PPU->Mask & PPU_MASK_SPRLEFT) && X < 8;
     u8 DrawBG = (!MaskBG && (PPU->Mask & PPU_MASK_DRAWBG));
@@ -372,7 +366,7 @@ PPU_DrawPixel(ppu *PPU)
         Color = (Spr & 0x0F) | 0x10;
     else
     { 
-        if (PPU->SpritesIndices[Spri] == 0 && X < 255)
+        if (PPU->SpritesIndices[Spri] == 0 && X < 255 && Y != 0)
             PPU->Status |= PPU_SPRHIT;
 
         if (PPU->OAM2[Spri * 4 + 2] & 0x20)
@@ -381,7 +375,10 @@ PPU_DrawPixel(ppu *PPU)
             Color = (Spr & 0x0F) | 0x10;
     }
 
-    PPU_SetPixel(PPU, X+1, Y, PPU_ReadPalette(PPU, Color));
+    if (Y < 8 || 232 <= Y)
+        PPU_SetPixel(PPU, X+1, Y, PPU->Palettes[0]);
+    else
+        PPU_SetPixel(PPU, X+1, Y, PPU_ReadPalette(PPU, Color));
 }
 
 inline u32
@@ -614,8 +611,13 @@ PPU_Step(ppu *PPU)
 
     if (PPU->Scanline == 241 && PPU->Cycles == 1)
         PPU_EnterVBlank(PPU);
-    else if (PreLine && PPU->Cycles == 1)
-        PPU_LeaveVBlank(PPU);
+    else if (PreLine)
+    {
+        if (PPU->Cycles == 0)
+            PPU->Status &= ~(PPU_SPRHIT);
+        else if (PPU->Cycles == 1)
+            PPU_LeaveVBlank(PPU);
+    }
 }
 
 static void
