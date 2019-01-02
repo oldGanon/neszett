@@ -181,14 +181,16 @@ Input_Init(input *Input)
     Api_Free(Data);
 }
 
-static b32
+static gamepad_playback*
 Input_LoadFM2(string Filename)
 {
     mi Length;
     void *Data = File_ReadEntireFile(Filename, &Length);
-    if (!Data) return false;
+    if (!Data) return 0;
 
     string File = String((char *)Data, Length);
+
+    gamepad_playback *Result = 0;
 
     b32 Binary = 0;
     while (!String_StartsWith(File, S("|")))
@@ -201,7 +203,7 @@ Input_LoadFM2(string Filename)
             if (!String_StartsWith(Line, S("3")))
             {
                 Api_Free(Data);
-                return false;
+                return 0;
             }
         }
         // else if (Key == S("emuVersion"));
@@ -241,20 +243,37 @@ Input_LoadFM2(string Filename)
             string Line = String_SplitLeft(&InputLog, '\n');
         }
 
-        GlobalMovie = (u8 *)Api_Malloc(FrameCount);
-        u8 *Frame = GlobalMovie;
+        Result = (gamepad_playback *)Api_Malloc(FrameCount * sizeof(gamepad_frame) + 8);
+        Result->Size = FrameCount;
+        Result->Index = 1;
+        gamepad_frame *Frame = Result->Frames;
         InputLog = File;
         while (InputLog.Length)
         {
             string Line = String_SplitLeft(&InputLog, '\n');
             String_SplitLeft(&Line, '|');
-            String_SplitLeft(&Line, '|');
-            Line = String_SplitLeft(&Line, '|');
 
-            *Frame = 0;
+            *Frame = { };
+
+            string Flags = String_SplitLeft(&Line, '|');
+            switch (Flags.Data[0])
+            {
+                case '3': Frame->Flags = 3; break;
+                case '2': Frame->Flags = 2; break;
+                case '1': Frame->Flags = 1; break;
+            }
+
+            string Gamepad0 = String_SplitLeft(&Line, '|');
+            if (Gamepad0.Length == 8)
             for (u32 i = 0; i < 8; ++i)
-                if (Line.Data[i] != ' ' && Line.Data[i] != '.')
-                    *Frame |= 0x80 >> i;
+                if (Gamepad0.Data[i] != ' ' && Gamepad0.Data[i] != '.')
+                    Frame->Gamepad[0] |= 0x80 >> i;
+
+            string Gamepad1 = String_SplitLeft(&Line, '|');
+            if (Gamepad1.Length == 8)
+            for (u32 i = 0; i < 8; ++i)
+                if (Gamepad1.Data[i] != ' ' && Gamepad1.Data[i] != '.')
+                    Frame->Gamepad[1] |= 0x80 >> i;
 
             ++Frame;
         }
@@ -262,5 +281,5 @@ Input_LoadFM2(string Filename)
 
     Api_Free(Data);
 
-    return true;
+    return Result;
 }

@@ -519,6 +519,8 @@ PPU_EnterVBlank(ppu *PPU)
         Atomic_Set(&GlobalScreenChanged, 1);
     }
 #endif
+    
+    Console_NextFrame(PPU->Console);
 }
 
 inline void
@@ -577,9 +579,14 @@ PPU_Step(ppu *PPU)
                 PPU->OAM2[(PPU->Cycles - 1) >> 1] = 0xFF;
             else if (PPU->Cycles < 256)
             {
-                u8 i = ((u8)PPU->Cycles - 114);
-                if ((i % 2) == 0)
-                    PPU_SpriteEvaluation(PPU, i / 2);
+                // u8 i = ((u8)PPU->Cycles - 114);
+                // if ((i % 2) == 0)
+                //     PPU_SpriteEvaluation(PPU, i / 2);
+            }
+            else if (PPU->Cycles == 256)
+            {
+                for (u8 i = 0; i < 64; ++i)
+                    PPU_SpriteEvaluation(PPU, i);
             }
         }
 
@@ -614,9 +621,7 @@ PPU_Step(ppu *PPU)
                 }
             }
             else if (PPU->Cycles == 280)
-            {
                 PPU_SpriteFetch(PPU);
-            }
             else if (PPU->Cycles == 257)
                 PPU_CopyHoriV(PPU);
             else if (PreLine && 280 <= PPU->Cycles && PPU->Cycles <= 304)

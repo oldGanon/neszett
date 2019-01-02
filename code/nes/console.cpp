@@ -30,6 +30,9 @@ inline void APU_WriteRegister(console *Console, u16 Address, u8 Value);
 inline void Console_TriggerNMI(console *Console);
 inline void Console_SetIRQ(console *Console, irq_source Source);
 inline void Console_ClearIRQ(console *Console, irq_source Source);
+inline void Console_NextFrame(console *Console);
+static void Console_Reset(console *Console);
+static void Console_Power(console *Console);
 
 #include "nes/gamepad.cpp"
 #include "nes/cart.cpp"
@@ -105,6 +108,12 @@ Console_ClearIRQ(console *Console, irq_source Source)
 }
 
 inline void
+Console_NextFrame(console *Console)
+{
+    Gamepad_NextFrame(Console->Gamepad);
+}
+
+inline void
 Console_Step(console *Console)
 {
     CPU_Step(Console->CPU);
@@ -113,6 +122,7 @@ Console_Step(console *Console)
     PPU_Step(Console->PPU);
     APU_Step(Console->APU);
     Cart_Step(Console->Cart);
+    Gamepad_Step(Console->Gamepad);
 }
 
 static void
@@ -154,7 +164,7 @@ Console_Create(cart *Cart)
     console *Console = (console *)Api_Malloc(sizeof(console));
     Console->Cart = Cart;
     Console->Cart->Console = Console;
-    Console->Gamepad = Gamepad_Create();
+    Console->Gamepad = Gamepad_Create(Console);
     Console->APU = APU_Create(Console);
     Console->PPU = PPU_Create(Console);
     Console->CPU = CPU_Create(Console);

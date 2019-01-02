@@ -38,8 +38,6 @@ global u8 GlobalGamepad;
 global atomic GlobalFrame;
 global atomic GlobalPhase;
 
-global u8 *GlobalMovie;
-
 #include "nes/console.cpp"
 
 global b32 GlobalRunning = true;
@@ -286,8 +284,6 @@ Api_PrintString(u32 Target, string String)
 inline u8
 Api_GetGamepad()
 {
-    if (GlobalMovie)
-        return GlobalMovie[Atomic_Get(&GlobalFrame)];
     return GlobalGamepad;
 }
 
@@ -510,6 +506,7 @@ Main_CreateOpenGLWindow()
 {
     ivec2 Resolution = iVec2(300, 224);
     ivec2 WindowDim = Resolution * iVec2(3);
+    WindowDim = iVec2(1920, 1080);
 
 #if (COMPILE_PI || COMPILE_EMSCRIPTEN)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -787,8 +784,15 @@ Main_CollectEvents(SDL_Window *Window, main_state *MainState)
                 }
                 else if (String_EndsWith(Filename, S(".fm2")))
                 {
-                    if (Input_LoadFM2(Filename))
-                        NES_Power(MainState);
+                    gamepad_playback *Playback = Input_LoadFM2(Filename);
+                    if (Playback)
+                    {
+                        NES_Pause(MainState);
+                        Gamepad_SetPlayback(GlobalConsole->Gamepad, Playback);
+                        if (GlobalConsole)
+                            Console_Power(GlobalConsole);
+                        NES_Resume(MainState);
+                    }
                 }
                 SDL_free(Event.drop.file);
             } break;
