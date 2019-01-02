@@ -71,6 +71,7 @@ struct ppu
     u8 NMI;
     u8 SuppressVBL;
     u8 OAM2[32];
+    u8 OAM3[32];
     u32 Sprites[8];
     u32 SpritesIndices[8];
     u8 Screen[240][260];
@@ -316,15 +317,15 @@ PPU_GetSpritePixel(ppu *PPU)
 {
     u8 X = (PPU->Cycles - 1) & 0xFF;
     u16 Y = PPU->Scanline;
-    for (u8 i = 0; i < PPU->SpriteCount; ++i)
+    for (u8 i = 0; i < 8; ++i)
     {
         u8 n = i * 4;
-        u8 SprX = PPU->OAM2[n + 3];
+        u8 SprX = PPU->OAM3[n + 3];
         if (X < SprX) continue;
         SprX = X - SprX;
         if (SprX > 7) continue;
 
-        if (!(PPU->OAM2[n + 2] & 0x40))
+        if (!(PPU->OAM3[n + 2] & 0x40))
             SprX ^= 0x7;
         SprX <<= 2;
         u8 Color = (PPU->Sprites[i] >> SprX) & 0x0F;
@@ -369,7 +370,7 @@ PPU_DrawPixel(ppu *PPU)
         if (PPU->SpritesIndices[Spri] == 0 && X < 255 && Y != 0)
             PPU->Status |= PPU_SPRHIT;
 
-        if (PPU->OAM2[Spri * 4 + 2] & 0x20)
+        if (PPU->OAM3[Spri * 4 + 2] & 0x20)
             Color = BG;
         else
             Color = (Spr & 0x0F) | 0x10;
@@ -382,11 +383,13 @@ PPU_DrawPixel(ppu *PPU)
 }
 
 inline u32
-PPU_SpritePattern(ppu *PPU, u8 i, u8 R)
+PPU_SpritePattern(ppu *PPU, u8 i)
 {
     u16 Address;
-    u8 Tile = PPU->OAM[i + 1];
-    u8 Attributes = PPU->OAM[i + 2];
+    u8 Y = PPU->OAM2[i * 4];
+    u8 Tile = PPU->OAM2[i * 4 + 1];
+    u8 Attributes = PPU->OAM2[i * 4 + 2];
+    u8 R = (PPU->Scanline - Y) & 0xFF;
     if (PPU->Controle & PPU_SPRSIZE)
     { // 8x16
         if (Attributes & 0x80) R = 15 - R;
@@ -409,44 +412,46 @@ PPU_SpritePattern(ppu *PPU, u8 i, u8 R)
 }
 
 inline void
-PPU_SpriteEvaluation(ppu *PPU)
+PPU_SpriteFetch(ppu *PPU)
 {
-    u8 C = 0;
-    u8 SpriteSize = (PPU->Controle & PPU_SPRSIZE) ? 16 : 8;
-
     for (u8 i = 0; i < 32; ++i)
-        PPU->OAM2[i] = 0xFF;
+        PPU->OAM3[i] = PPU->OAM2[i];
 
-    for (u8 n = 0; n < 64; ++n)
+    for (u8 i = 0; i < 8; ++i)
+        PPU->Sprites[i] = PPU_SpritePattern(PPU, i);
+}
+
+inline void
+PPU_SpriteEvaluation(ppu *PPU, u8 i)
+{
+    if (i >= 64) return;
+
+    u8 C = PPU->SpriteCount;
+    u8 SpriteSize = (PPU->Controle & PPU_SPRSIZE) ? 16 : 8;
+        
+    u8 n = i * 4;
+    u8 Y = PPU->OAM[n];
+    u8 R = (PPU->Scanline - Y) & 0xFF;
+
+    if (C >= 8)
     {
-        u8 i = n * 4;
-        u8 Y = PPU->OAM[i];
-        u8 R = (PPU->Scanline - Y) & 0xFF;
-
-        if (Y >= 0xEF) continue;
-        if (R >= SpriteSize) continue;
-        if (C > 7)
-        {
-            PPU->Status |= PPU_SPROVERFLOW;
-            break;
-        }
-
-        PPU->OAM2[C * 4 + 0] = Y;
-        PPU->OAM2[C * 4 + 1] = PPU->OAM[i + 1];
-        PPU->OAM2[C * 4 + 2] = PPU->OAM[i + 2];
-        PPU->OAM2[C * 4 + 3] = PPU->OAM[i + 3];
-        PPU->Sprites[C] = PPU_SpritePattern(PPU, i, R);;
-        PPU->SpritesIndices[C] = n;
-        C++;
+        if (Y > 0xEF) return;
+        if (R >= SpriteSize) return;
+        PPU->Status |= PPU_SPROVERFLOW;
     }
+    else
+    {   
+        PPU->OAM2[C * 4] = Y;
 
-    for (u8 i = C; i < 8; ++i)
-    {
-        Cart_Read(PPU->Console, 0x1FF0);
-        Cart_Read(PPU->Console, 0x1FF8);
+        if (Y > 0xEF) return;
+        if (R >= SpriteSize) return;
+
+        PPU->OAM2[C * 4 + 1] = PPU->OAM[n + 1];
+        PPU->OAM2[C * 4 + 2] = PPU->OAM[n + 2];
+        PPU->OAM2[C * 4 + 3] = PPU->OAM[n + 3];
+        PPU->SpritesIndices[C++] = i;
+        PPU->SpriteCount = C;
     }
-
-    PPU->SpriteCount = C;
 }
 
 inline void
@@ -565,6 +570,17 @@ PPU_Step(ppu *PPU)
                 PPU_DrawPixel(PPU);
             else if (PPU->Cycles <= 259)
                 PPU_SetPixel(PPU, PPU->Cycles, PPU->Scanline, PPU->Palettes[0]);
+            
+            if (PPU->Cycles <= 1)
+                PPU->SpriteCount = 0;
+            else if (PPU->Cycles <= 64)
+                PPU->OAM2[(PPU->Cycles - 1) >> 1] = 0xFF;
+            else if (PPU->Cycles < 256)
+            {
+                u8 i = ((u8)PPU->Cycles - 114);
+                if ((i % 2) == 0)
+                    PPU_SpriteEvaluation(PPU, i / 2);
+            }
         }
 
         if (FetchLine)
@@ -598,7 +614,9 @@ PPU_Step(ppu *PPU)
                 }
             }
             else if (PPU->Cycles == 280)
-                PPU_SpriteEvaluation(PPU);
+            {
+                PPU_SpriteFetch(PPU);
+            }
             else if (PPU->Cycles == 257)
                 PPU_CopyHoriV(PPU);
             else if (PreLine && 280 <= PPU->Cycles && PPU->Cycles <= 304)
@@ -614,7 +632,7 @@ PPU_Step(ppu *PPU)
     else if (PreLine)
     {
         if (PPU->Cycles == 0)
-            PPU->Status &= ~(PPU_SPRHIT);
+            PPU->Status &= ~(PPU_SPRHIT | PPU_SPROVERFLOW);
         else if (PPU->Cycles == 1)
             PPU_LeaveVBlank(PPU);
     }
