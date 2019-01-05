@@ -290,7 +290,6 @@ inline void NOP(cpu *CPU, u16 Address)
 // Not Implemented Operation
 inline void _OP(cpu *CPU, u16 Address)
 {
-	int i = 0;
     return;
 }
 
@@ -529,13 +528,19 @@ inline void NMI(cpu *CPU)
 // Interrupt
 inline void IRQ(cpu *CPU)
 {
-    if (CPU->IRQDelayed && !(CPU->SR & STATUS_INTERRUPT)) return;
     if (!CPU->IRQDelayed && CPU->SR & STATUS_INTERRUPT) return;
+    if (CPU->IRQDelayed && !(CPU->SR & STATUS_INTERRUPT)) return;
     CPU_Push(CPU, CPU->PC >> 8);
     CPU_Push(CPU, CPU->PC & 0xFF);
     CPU_Push(CPU, CPU->SR | STATUS_);
-    CPU->PC = CPU_ReadWord(CPU, 0xFFFE);
     CPU->SR |= STATUS_INTERRUPT;
+    if (CPU->Console->PPU->NMI)
+    {
+        CPU->NMIOccurred = 0;
+        CPU->Console->PPU->NMI = 0;
+        CPU->PC = CPU_ReadWord(CPU, 0xFFFA);
+    }
+    else CPU->PC = CPU_ReadWord(CPU, 0xFFFE);
     CPU->Busy += 7;
 }
 
@@ -550,7 +555,7 @@ inline void CPU_OP(cpu *CPU)
         case CPU_AM_IMPL: break;
         case CPU_AM_ACC:  break;
         case CPU_AM_ABS:  Address = CPU_Abs(CPU);  break;
-        case CPU_AM_ABSX: Address = CPU_AbsX(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->X);break;
+        case CPU_AM_ABSX: Address = CPU_AbsX(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->X); break;
         case CPU_AM_ABSY: Address = CPU_AbsY(CPU); PageCross = CPU_PageCross(Address, Address - (i16)CPU->Y); break;
         case CPU_AM_IMM:  Address = CPU_Imm(CPU);  break;
         case CPU_AM_IND:  Address = CPU_Ind(CPU);  break;

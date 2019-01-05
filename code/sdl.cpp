@@ -506,7 +506,7 @@ Main_CreateOpenGLWindow()
 {
     ivec2 Resolution = iVec2(300, 224);
     ivec2 WindowDim = Resolution * iVec2(3);
-    WindowDim = iVec2(1920, 1080);
+    // WindowDim = iVec2(1920, 1080);
 
 #if (COMPILE_PI || COMPILE_EMSCRIPTEN)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);

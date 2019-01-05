@@ -404,7 +404,7 @@ APU_TimerStep(apu_dmc *DMC, console *Console)
     if (!DMC->Length) return;
     if (DMC->CurrLength && DMC->BitCount == 0)
     {
-        Console->CPU->Busy += 4;
+        Console->CPU->Busy += 4; // TODO:DONT FORGET THIS
         DMC->Samples = Cart_Read(Console, DMC->CurrAddress++);
         DMC->BitCount = 8;
         if (!DMC->CurrAddress) DMC->CurrAddress = 0x8000;
