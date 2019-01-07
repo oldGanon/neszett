@@ -61,6 +61,7 @@ enum cpu_cycle_op
     READ_ADDR,
     READ_ADDR_Y,
     READ_STACK,
+    READ_WRAP,
     // WRITE
     WRITE_DATA,
     // PULL
@@ -84,6 +85,7 @@ enum cpu_cycle_op
     ADDR_ADD_X,
     ADDR_ADD_Y,
     ADDR_ADD_X_C,
+    ADDR_ADD_Y_C,
     ADDR_CARRY,
     // REG
     ADC,
@@ -151,8 +153,8 @@ enum cpu_cycle_op
 #define REG_OP_abs(OP)  { 4, FETCH_DATA, FETCH_ADDR,   OP,          FETCH_OP }
 #define REG_OP_absX(OP) { 5, FETCH_DATA, FETCH_ADDR_X, ADDR_CARRY,  OP,         FETCH_OP } //
 #define REG_OP_absY(OP) { 5, FETCH_DATA, FETCH_ADDR_Y, ADDR_CARRY,  OP,         FETCH_OP } //
-#define REG_OP_indX(OP) { 6, FETCH_ZPG,  ADDR_ADD_X,   READ_NEXT,   READ_ADDR,  OP,      FETCH_OP }
-#define REG_OP_indY(OP) { 6, FETCH_ZPG,  READ_NEXT,    READ_ADDR_Y, ADDR_CARRY, OP,      FETCH_OP } //
+#define REG_OP_indX(OP) { 6, FETCH_ZPG,  ADDR_ADD_X,   READ_WRAP,   READ_ADDR,  OP,      FETCH_OP }
+#define REG_OP_indY(OP) { 6, FETCH_ZPG,  READ_WRAP,    READ_ADDR_Y, ADDR_CARRY, OP,      FETCH_OP } //
 
 #define ADC_imm  REG_OP_imm (ADC)
 #define ADC_zpg  REG_OP_zpg (ADC)
@@ -262,28 +264,34 @@ enum cpu_cycle_op
 #define SBC_indX REG_OP_indX(SBC)
 #define SBC_indY REG_OP_indY(SBC)
 
-#define STA_imm  { }
-#define STA_zpg  REG_OP_zpg (STA)
-#define STA_zpgX REG_OP_zpgX(STA)
-#define STA_abs  REG_OP_abs (STA)
-#define STA_absX REG_OP_absX(STA)
-#define STA_absY REG_OP_absY(STA)
-#define STA_indX REG_OP_indX(STA)
-#define STA_indY REG_OP_indY(STA)
+#define STORE_OP_zpg(OP)  { 3, FETCH_ZPG,  OP,         FETCH_OP }
+#define STORE_OP_zpgX(OP) { 4, FETCH_ZPG,  ADDR_ADD_X, OP,           FETCH_OP }
+#define STORE_OP_zpgY(OP) { 4, FETCH_ZPG,  ADDR_ADD_Y, OP,           FETCH_OP }
+#define STORE_OP_abs(OP)  { 4, FETCH_DATA, FETCH_ADDR, OP,           FETCH_OP }
+#define STORE_OP_absX(OP) { 5, FETCH_DATA, FETCH_ADDR, ADDR_ADD_X_C, OP,           FETCH_OP } //
+#define STORE_OP_absY(OP) { 5, FETCH_DATA, FETCH_ADDR, ADDR_ADD_Y_C, OP,           FETCH_OP } //
+#define STORE_OP_indX(OP) { 6, FETCH_ZPG,  ADDR_ADD_X, READ_WRAP,    READ_ADDR,    OP,      FETCH_OP }
+#define STORE_OP_indY(OP) { 6, FETCH_ZPG,  READ_WRAP,  READ_ADDR,    ADDR_ADD_Y_C, OP,      FETCH_OP } //
 
-#define STX_imm  { }
-#define STX_zpg  REG_OP_zpg (STX)
-#define STX_zpgY REG_OP_zpgY(STX)
-#define STX_abs  REG_OP_abs (STX)
+#define STA_zpg  STORE_OP_zpg (STA)
+#define STA_zpgX STORE_OP_zpgX(STA)
+#define STA_abs  STORE_OP_abs (STA)
+#define STA_absX STORE_OP_absX(STA)
+#define STA_absY STORE_OP_absY(STA)
+#define STA_indX STORE_OP_indX(STA)
+#define STA_indY STORE_OP_indY(STA)
+
+#define STX_zpg  STORE_OP_zpg (STX)
+#define STX_zpgY STORE_OP_zpgY(STX)
+#define STX_abs  STORE_OP_abs (STX)
 #define STX_absX { }
 #define STX_absY { }
 #define STX_indX { }
 #define STX_indY { }
 
-#define STY_imm  { }
-#define STY_zpg  REG_OP_zpg (STY)
-#define STY_zpgX REG_OP_zpgX(STY)
-#define STY_abs  REG_OP_abs (STY)
+#define STY_zpg  STORE_OP_zpg (STY)
+#define STY_zpgX STORE_OP_zpgX(STY)
+#define STY_abs  STORE_OP_abs (STY)
 #define STY_absX { }
 #define STY_absY { }
 #define STY_indX { }
@@ -359,7 +367,7 @@ enum cpu_cycle_op
 #define IRQ_imp { 7, READ_DATA,  PUSH_HI_PC, PUSH_LO_PC, PUSH_SR_IRQ, READ_NEXT, READ_PC, FETCH_OP }
 
 #define JMP_abs { 3, READ_NEXT,  READ_PC,   FETCH_OP }
-#define JMP_ind { 5, READ_NEXT,  READ_ADDR, READ_NEXT, READ_PC,   FETCH_OP }
+#define JMP_ind { 5, READ_NEXT,  READ_ADDR, READ_WRAP, READ_PC,   FETCH_OP }
 #define JSR_abs { 6, FETCH_DATA, JSR_BEGIN, JSR_HI_PC, JSR_LO_PC, JSR_END, FETCH_OP }
 
 #define NOP_imp { 2, READ_DATA, FETCH_OP }
@@ -455,7 +463,7 @@ CPU_DMACopy(cpu *CPU)
     }
     
     if (Cycle & 1)
-        CPU->Data = CPU_R(CPU, CPU->Address);
+        CPU->Data = CPU_R(CPU, CPU->Address++);
     else
         CPU_W(CPU, OAMDATA, CPU->Data);
 
@@ -589,8 +597,9 @@ CPU_FetchAddrX(cpu *CPU)
 {
     u8 Lo = CPU->Data;
     CPU_Fetch(CPU);
-    u16 NewAddress = Lo | (CPU->Data << 8);
-    CPU->Address = NewAddress + CPU->X;
+    CPU->Address = (Lo | (CPU->Data << 8));
+    u16 NewAddress = CPU->Address + CPU->X;
+    CPU->Address = (CPU->Address & 0xFF00) | (NewAddress & 0xFF);
     if (CPU->Address == NewAddress)
         ++CPU->OPCycle;
 }
@@ -600,8 +609,9 @@ CPU_FetchAddrY(cpu *CPU)
 {
     u8 Lo = CPU->Data;
     CPU_Fetch(CPU);
-    u16 NewAddress = Lo | (CPU->Data << 8);
-    CPU->Address = NewAddress + CPU->Y;
+    CPU->Address = (Lo | (CPU->Data << 8));
+    u16 NewAddress = CPU->Address + CPU->Y;
+    CPU->Address = (CPU->Address & 0xFF00) | (NewAddress & 0xFF);
     if (CPU->Address == NewAddress)
         ++CPU->OPCycle;
 }
@@ -619,6 +629,14 @@ CPU_ReadNext(cpu *CPU)
 {
     CPU_Read(CPU);
     ++CPU->Address;
+}
+
+inline void
+CPU_ReadWrap(cpu *CPU)
+{
+    CPU_Read(CPU);
+    u8 Lo = ((CPU->Address + 1) & 0xFF);
+    CPU->Address =  Lo | (CPU->Address & 0xFF00);
 }
 
 inline void
@@ -649,8 +667,9 @@ CPU_ReadAddrY(cpu *CPU)
 {
     u8 Lo = CPU->Data;
     CPU_ReadNext(CPU);
-    u16 NewAddress = Lo | (CPU->Data << 8);
-    CPU->Address = NewAddress + CPU->Y;
+    CPU->Address = (Lo | (CPU->Data << 8));
+    u16 NewAddress = CPU->Address + CPU->Y;
+    CPU->Address = (CPU->Address & 0xFF00) | (NewAddress & 0xFF);
     if (CPU->Address == NewAddress)
         ++CPU->OPCycle;
 }
@@ -739,7 +758,7 @@ CPU_PushSRBRK(cpu *CPU)
     CPU->Data = CPU->SR | STATUS_ | STATUS_BREAK;
     CPU_Push(CPU);
     CPU->SR |= STATUS_INTERRUPT;
-    CPU->Address = 0xFFFA;
+    CPU->Address = 0xFFFE;
     CPU->Interrupt = false;
 }
 
@@ -829,6 +848,15 @@ inline void
 CPU_AddrAddXC(cpu *CPU)
 {
     u16 NewAddress = CPU->Address + CPU->X;
+    CPU->Address = (CPU->Address & 0xFF00) | (NewAddress & 0x00FF);
+    CPU_Read(CPU);
+    CPU->Address = NewAddress;
+}
+
+inline void
+CPU_AddrAddYC(cpu *CPU)
+{
+    u16 NewAddress = CPU->Address + CPU->Y;
     CPU->Address = (CPU->Address & 0xFF00) | (NewAddress & 0x00FF);
     CPU_Read(CPU);
     CPU->Address = NewAddress;
@@ -1356,18 +1384,7 @@ CPU_TYA(cpu *CPU)
 
 inline void
 CPU_FetchOP(cpu *CPU)
-{
-    static u32 Instr = 0;
-    if (Instr++ <= 8991)
-    SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO,
-        "%4X   A:%2X X:%2X Y:%2X P:%2X SP:%2X CYC:%u",
-        CPU->PC, CPU->A, CPU->X, CPU->Y, CPU->SR | 0x20, CPU->SP, CPU->Cycles);
-    if (CPU->PC == 0xDBB5)
-    {
-        i32 i = 0;
-    }
-
-    
+{    
     CPU->Address = CPU->PC;
     if (CPU->Interrupt)
     {
@@ -1379,6 +1396,8 @@ CPU_FetchOP(cpu *CPU)
         CPU_Fetch(CPU);
         CPU->OP = OP_Table[CPU->Data];
     }
+    if (CPU->Data == 0)
+        i32 i = 0;
     CPU->OPCycle = 0;
     CPU->Address = CPU->PC;
 }
@@ -1409,6 +1428,7 @@ CPU_Step(cpu *CPU)
         case READ_ADDR:   CPU_ReadAddr(CPU); break;
         case READ_ADDR_Y: CPU_ReadAddrY(CPU); break;
         case READ_STACK:  CPU_ReadStack(CPU); break;
+        case READ_WRAP:  CPU_ReadWrap(CPU); break;
         // WRITE
         case WRITE_DATA: CPU_Write(CPU); break;
         // PULL
@@ -1432,6 +1452,7 @@ CPU_Step(cpu *CPU)
         case ADDR_ADD_X:   CPU_AddrAddX(CPU); break;
         case ADDR_ADD_Y:   CPU_AddrAddY(CPU); break;
         case ADDR_ADD_X_C: CPU_AddrAddXC(CPU); break;
+        case ADDR_ADD_Y_C: CPU_AddrAddYC(CPU); break;
         case ADDR_CARRY:   CPU_AddrCarry(CPU); break;
         // REG
         case ADC: CPU_ADC(CPU); break;
@@ -1506,16 +1527,14 @@ CPU_Reset(cpu *CPU)
     CPU->SP -= 3;
     CPU->SR |= STATUS_INTERRUPT;
 
-    // CPU->Address = 0xFFFC;
-    // CPU_ReadNext(CPU);
-    // CPU_ReadPC(CPU);
-    // CPU_FetchOP(CPU);
-    CPU->PC = 0xC000;
-    CPU->Cycles = 5;
-    
     CPU->Data = 0;
     CPU->Address = 0x4015;
     CPU_Write(CPU);
+
+    CPU->Address = 0xFFFC;
+    CPU_ReadNext(CPU);
+    CPU_ReadPC(CPU);
+    CPU_FetchOP(CPU);
 }
 
 static void
