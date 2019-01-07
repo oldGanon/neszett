@@ -38,7 +38,7 @@ static void Console_Power(console *Console);
 #include "nes/cart.cpp"
 #include "nes/file.cpp"
 #include "nes/ppu.cpp"
-#include "nes/cpu.cpp"
+#include "nes/cpu2.cpp"
 #include "nes/apu.cpp"
 
 inline u8
