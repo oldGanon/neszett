@@ -1,7 +1,7 @@
 
 struct cpu_op
 {
-    u8 Cycles;
+    u8 InterruptCheck;
     u8 CycleOp[7];
 };
 
@@ -16,6 +16,7 @@ struct cpu
     u8 Data;
 
     u16 DMACycle;
+    u16 DMAAddress;
     u8 DMAActive;
 
     u8 NMIOccurred;
@@ -146,15 +147,15 @@ enum cpu_cycle_op
     TYA,
 };
 
-#define REG_OP_imm(OP)  { 2, OP,         FETCH_OP }
-#define REG_OP_zpg(OP)  { 3, FETCH_ZPG,  OP,           FETCH_OP }
-#define REG_OP_zpgX(OP) { 4, FETCH_ZPG,  ADDR_ADD_X,   OP,          FETCH_OP }
-#define REG_OP_zpgY(OP) { 4, FETCH_ZPG,  ADDR_ADD_Y,   OP,          FETCH_OP }
-#define REG_OP_abs(OP)  { 4, FETCH_DATA, FETCH_ADDR,   OP,          FETCH_OP }
-#define REG_OP_absX(OP) { 5, FETCH_DATA, FETCH_ADDR_X, ADDR_CARRY,  OP,         FETCH_OP } //
-#define REG_OP_absY(OP) { 5, FETCH_DATA, FETCH_ADDR_Y, ADDR_CARRY,  OP,         FETCH_OP } //
-#define REG_OP_indX(OP) { 6, FETCH_ZPG,  ADDR_ADD_X,   READ_WRAP,   READ_ADDR,  OP,      FETCH_OP }
-#define REG_OP_indY(OP) { 6, FETCH_ZPG,  READ_WRAP,    READ_ADDR_Y, ADDR_CARRY, OP,      FETCH_OP } //
+#define REG_OP_imm(OP)  { 0, OP,         FETCH_OP }
+#define REG_OP_zpg(OP)  { 1, FETCH_ZPG,  OP,           FETCH_OP }
+#define REG_OP_zpgX(OP) { 2, FETCH_ZPG,  ADDR_ADD_X,   OP,          FETCH_OP }
+#define REG_OP_zpgY(OP) { 2, FETCH_ZPG,  ADDR_ADD_Y,   OP,          FETCH_OP }
+#define REG_OP_abs(OP)  { 2, FETCH_DATA, FETCH_ADDR,   OP,          FETCH_OP }
+#define REG_OP_absX(OP) { 3, FETCH_DATA, FETCH_ADDR_X, ADDR_CARRY,  OP,         FETCH_OP } //
+#define REG_OP_absY(OP) { 3, FETCH_DATA, FETCH_ADDR_Y, ADDR_CARRY,  OP,         FETCH_OP } //
+#define REG_OP_indX(OP) { 4, FETCH_ZPG,  ADDR_ADD_X,   READ_WRAP,   READ_ADDR,  OP,      FETCH_OP }
+#define REG_OP_indY(OP) { 4, FETCH_ZPG,  READ_WRAP,    READ_ADDR_Y, ADDR_CARRY, OP,      FETCH_OP } //
 
 #define ADC_imm  REG_OP_imm (ADC)
 #define ADC_zpg  REG_OP_zpg (ADC)
@@ -264,14 +265,14 @@ enum cpu_cycle_op
 #define SBC_indX REG_OP_indX(SBC)
 #define SBC_indY REG_OP_indY(SBC)
 
-#define STORE_OP_zpg(OP)  { 3, FETCH_ZPG,  OP,         FETCH_OP }
-#define STORE_OP_zpgX(OP) { 4, FETCH_ZPG,  ADDR_ADD_X, OP,           FETCH_OP }
-#define STORE_OP_zpgY(OP) { 4, FETCH_ZPG,  ADDR_ADD_Y, OP,           FETCH_OP }
-#define STORE_OP_abs(OP)  { 4, FETCH_DATA, FETCH_ADDR, OP,           FETCH_OP }
-#define STORE_OP_absX(OP) { 5, FETCH_DATA, FETCH_ADDR, ADDR_ADD_X_C, OP,           FETCH_OP } //
-#define STORE_OP_absY(OP) { 5, FETCH_DATA, FETCH_ADDR, ADDR_ADD_Y_C, OP,           FETCH_OP } //
-#define STORE_OP_indX(OP) { 6, FETCH_ZPG,  ADDR_ADD_X, READ_WRAP,    READ_ADDR,    OP,      FETCH_OP }
-#define STORE_OP_indY(OP) { 6, FETCH_ZPG,  READ_WRAP,  READ_ADDR,    ADDR_ADD_Y_C, OP,      FETCH_OP } //
+#define STORE_OP_zpg(OP)  { 1, FETCH_ZPG,  OP,         FETCH_OP }
+#define STORE_OP_zpgX(OP) { 2, FETCH_ZPG,  ADDR_ADD_X, OP,           FETCH_OP }
+#define STORE_OP_zpgY(OP) { 2, FETCH_ZPG,  ADDR_ADD_Y, OP,           FETCH_OP }
+#define STORE_OP_abs(OP)  { 2, FETCH_DATA, FETCH_ADDR, OP,           FETCH_OP }
+#define STORE_OP_absX(OP) { 3, FETCH_DATA, FETCH_ADDR, ADDR_ADD_X_C, OP,           FETCH_OP } //
+#define STORE_OP_absY(OP) { 3, FETCH_DATA, FETCH_ADDR, ADDR_ADD_Y_C, OP,           FETCH_OP } //
+#define STORE_OP_indX(OP) { 4, FETCH_ZPG,  ADDR_ADD_X, READ_WRAP,    READ_ADDR,    OP,      FETCH_OP }
+#define STORE_OP_indY(OP) { 4, FETCH_ZPG,  READ_WRAP,  READ_ADDR,    ADDR_ADD_Y_C, OP,      FETCH_OP } //
 
 #define STA_zpg  STORE_OP_zpg (STA)
 #define STA_zpgX STORE_OP_zpgX(STA)
@@ -297,17 +298,17 @@ enum cpu_cycle_op
 #define STY_indX { }
 #define STY_indY { }
 
-#define DEX_imp { 2, DEX, FETCH_OP }
-#define DEY_imp { 2, DEY, FETCH_OP }
+#define DEX_imp { 0, DEX, FETCH_OP }
+#define DEY_imp { 0, DEY, FETCH_OP }
 
-#define INX_imp { 2, INX, FETCH_OP }
-#define INY_imp { 2, INY, FETCH_OP }
+#define INX_imp { 0, INX, FETCH_OP }
+#define INY_imp { 0, INY, FETCH_OP }
 
-#define RMW_OP_acc(OP)  { 2, OP##_ACC,   FETCH_OP }
-#define RMW_OP_zpg(OP)  { 5, FETCH_ZPG,  READ_DATA,  OP,           WRITE_DATA, FETCH_OP }
-#define RMW_OP_zpgX(OP) { 6, FETCH_ZPG,  ADDR_ADD_X, READ_DATA,    OP,         WRITE_DATA, FETCH_OP }
-#define RMW_OP_abs(OP)  { 6, FETCH_DATA, FETCH_ADDR, READ_DATA,    OP,         WRITE_DATA, FETCH_OP }
-#define RMW_OP_absX(OP) { 7, FETCH_DATA, FETCH_ADDR, ADDR_ADD_X_C, READ_DATA,  OP,         WRITE_DATA, FETCH_OP }
+#define RMW_OP_acc(OP)  { 0, OP##_ACC,   FETCH_OP }
+#define RMW_OP_zpg(OP)  { 3, FETCH_ZPG,  READ_DATA,  OP,           WRITE_DATA, FETCH_OP }
+#define RMW_OP_zpgX(OP) { 4, FETCH_ZPG,  ADDR_ADD_X, READ_DATA,    OP,         WRITE_DATA, FETCH_OP }
+#define RMW_OP_abs(OP)  { 4, FETCH_DATA, FETCH_ADDR, READ_DATA,    OP,         WRITE_DATA, FETCH_OP }
+#define RMW_OP_absX(OP) { 5, FETCH_DATA, FETCH_ADDR, ADDR_ADD_X_C, READ_DATA,  OP,         WRITE_DATA, FETCH_OP }
 
 #define ASL_acc  RMW_OP_acc (ASL)
 #define ASL_zpg  RMW_OP_zpg (ASL)
@@ -345,48 +346,48 @@ enum cpu_cycle_op
 #define ROR_abs  RMW_OP_abs (ROR)
 #define ROR_absX RMW_OP_absX(ROR)
 
-#define BCC_rel { 4, BCC, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
-#define BCS_rel { 4, BCS, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
-#define BEQ_rel { 4, BEQ, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
-#define BMI_rel { 4, BMI, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
-#define BNE_rel { 4, BNE, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
-#define BPL_rel { 4, BPL, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
-#define BVC_rel { 4, BVC, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
-#define BVS_rel { 4, BVS, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BCC_rel { 2, BCC, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BCS_rel { 2, BCS, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BEQ_rel { 2, BEQ, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BMI_rel { 2, BMI, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BNE_rel { 2, BNE, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BPL_rel { 2, BPL, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BVC_rel { 2, BVC, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
+#define BVS_rel { 2, BVS, BRANCH_LO_PC, BRANCH_HI_PC, FETCH_OP }
 
-#define CLC_imp { 2, CLC, FETCH_OP }
-#define CLD_imp { 2, CLD, FETCH_OP }
-#define CLI_imp { 2, CLI, FETCH_OP }
-#define CLV_imp { 2, CLV, FETCH_OP }
+#define CLC_imp { 0, CLC, FETCH_OP }
+#define CLD_imp { 0, CLD, FETCH_OP }
+#define CLI_imp { 0, CLI, FETCH_OP }
+#define CLV_imp { 0, CLV, FETCH_OP }
 
-#define SEC_imp { 2, SEC, FETCH_OP }
-#define SED_imp { 2, SED, FETCH_OP }
-#define SEI_imp { 2, SEI, FETCH_OP }
+#define SEC_imp { 0, SEC, FETCH_OP }
+#define SED_imp { 0, SED, FETCH_OP }
+#define SEI_imp { 0, SEI, FETCH_OP }
 
-#define BRK_imp { 7, FETCH_DATA, PUSH_HI_PC, PUSH_LO_PC, PUSH_SR_BRK, READ_NEXT, READ_PC, FETCH_OP }
-#define IRQ_imp { 7, READ_DATA,  PUSH_HI_PC, PUSH_LO_PC, PUSH_SR_IRQ, READ_NEXT, READ_PC, FETCH_OP }
+#define BRK_imp { 0xFF, FETCH_DATA, PUSH_HI_PC, PUSH_LO_PC, PUSH_SR_BRK, READ_NEXT, READ_PC, FETCH_OP }
+#define IRQ_imp { 0xFF, READ_DATA,  PUSH_HI_PC, PUSH_LO_PC, PUSH_SR_IRQ, READ_NEXT, READ_PC, FETCH_OP }
 
-#define JMP_abs { 3, READ_NEXT,  READ_PC,   FETCH_OP }
-#define JMP_ind { 5, READ_NEXT,  READ_ADDR, READ_WRAP, READ_PC,   FETCH_OP }
-#define JSR_abs { 6, FETCH_DATA, JSR_BEGIN, JSR_HI_PC, JSR_LO_PC, JSR_END, FETCH_OP }
+#define JMP_abs { 1, READ_NEXT,  READ_PC,   FETCH_OP }
+#define JMP_ind { 3, READ_NEXT,  READ_ADDR, READ_WRAP, READ_PC,   FETCH_OP }
+#define JSR_abs { 4, FETCH_DATA, JSR_BEGIN, JSR_HI_PC, JSR_LO_PC, JSR_END, FETCH_OP }
 
-#define NOP_imp { 2, READ_DATA, FETCH_OP }
+#define NOP_imp { 0, READ_DATA, FETCH_OP }
 
-#define PHA_imp { 3, READ_DATA, PUSH_A,  FETCH_OP }
-#define PHP_imp { 3, READ_DATA, PUSH_SR, FETCH_OP }
+#define PHA_imp { 1, READ_DATA, PUSH_A,  FETCH_OP }
+#define PHP_imp { 1, READ_DATA, PUSH_SR, FETCH_OP }
 
-#define PLA_imp { 4, READ_DATA, READ_STACK, PULL_A,  FETCH_OP }
-#define PLP_imp { 4, READ_DATA, READ_STACK, PULL_SR, FETCH_OP }
+#define PLA_imp { 2, READ_DATA, READ_STACK, PULL_A,  FETCH_OP }
+#define PLP_imp { 2, READ_DATA, READ_STACK, PULL_SR, FETCH_OP }
 
-#define RTI_imp { 6, READ_DATA, READ_STACK, PULL_SR,    PULL_LO_PC, PULL_HI_PC, FETCH_OP }
-#define RTS_imp { 6, READ_DATA, READ_STACK, PULL_LO_PC, PULL_HI_PC, FETCH_DATA, FETCH_OP }
+#define RTI_imp { 4, READ_DATA, READ_STACK, PULL_SR,    PULL_LO_PC, PULL_HI_PC, FETCH_OP }
+#define RTS_imp { 4, READ_DATA, READ_STACK, PULL_LO_PC, PULL_HI_PC, FETCH_DATA, FETCH_OP }
 
-#define TAX_imp { 2, TAX, FETCH_OP }
-#define TAY_imp { 2, TAY, FETCH_OP }
-#define TSX_imp { 2, TSX, FETCH_OP }
-#define TXA_imp { 2, TXA, FETCH_OP }
-#define TXS_imp { 2, TXS, FETCH_OP }
-#define TYA_imp { 2, TYA, FETCH_OP }
+#define TAX_imp { 0, TAX, FETCH_OP }
+#define TAY_imp { 0, TAY, FETCH_OP }
+#define TSX_imp { 0, TSX, FETCH_OP }
+#define TXA_imp { 0, TXA, FETCH_OP }
+#define TXS_imp { 0, TXS, FETCH_OP }
+#define TYA_imp { 0, TYA, FETCH_OP }
 
 const cpu_op OP_Table[256] =
 {
@@ -413,7 +414,7 @@ CPU_DMA(cpu *CPU, u8 Value)
 {
     CPU->DMAActive = true;
     CPU->DMACycle = (CPU->Cycles & 1) ^ 1;
-    CPU->Address = (u16)(Value & 0x7) << 8;
+    CPU->DMAAddress = (u16)(Value & 0x7) << 8;
 }
 
 inline u8
@@ -456,19 +457,19 @@ inline void
 CPU_DMACopy(cpu *CPU)
 {
     u16 Cycle = CPU->DMACycle++;
-    if (Cycle <= 2)
+    if (Cycle < 2)
     {
-        CPU_R(CPU, CPU->Address);
+        CPU_R(CPU, CPU->DMAAddress);
         return;
     }
     
     if (Cycle & 1)
-        CPU->Data = CPU_R(CPU, CPU->Address++);
+        CPU_W(CPU, 0x2004, CPU->Data);
     else
-        CPU_W(CPU, OAMDATA, CPU->Data);
+        CPU->Data = CPU_R(CPU, CPU->DMAAddress++);
 
-    if (Cycle >= 514)
-        Cycle = false;
+    if (Cycle >= 513)
+        CPU->DMAActive = false;
 }
 
 // FLAGS
@@ -758,7 +759,12 @@ CPU_PushSRBRK(cpu *CPU)
     CPU->Data = CPU->SR | STATUS_ | STATUS_BREAK;
     CPU_Push(CPU);
     CPU->SR |= STATUS_INTERRUPT;
-    CPU->Address = 0xFFFE;
+    if (CPU->NMIOccurred)
+    {
+        CPU->NMIOccurred = 0;
+        CPU->Address = 0xFFFA;
+    }
+    else CPU->Address = 0xFFFE;
     CPU->Interrupt = false;
 }
 
@@ -780,7 +786,7 @@ CPU_PushSRIRQ(cpu *CPU)
 inline void
 CPU_PushSR(cpu *CPU)
 {
-    CPU->Data = CPU->SR | STATUS_;
+    CPU->Data = CPU->SR | STATUS_ | STATUS_BREAK;
     CPU_Push(CPU);
 }
 
@@ -1196,77 +1202,33 @@ CPU_ROR_ACC(cpu *CPU)
 //
 
 inline void
-CPU_BCC(cpu *CPU)
+CPU_Branch(cpu *CPU, b32 Condition)
 {
     CPU_Fetch(CPU);
-    if (CPU->SR & STATUS_CARRY)
-        CPU->OPCycle += 2;
+    if (Condition)
+    {
+        CPU->OPCycle = 3;
+        CPU->Interrupt = CPU->NMIOccurred || (CPU->IRQOccurred && !(CPU->SR & STATUS_INTERRUPT));
+    }
 }
 
-inline void
-CPU_BCS(cpu *CPU)
-{
-    CPU_Fetch(CPU);
-    if (!(CPU->SR & STATUS_CARRY))
-        CPU->OPCycle += 2;
-}
-
-inline void
-CPU_BEQ(cpu *CPU)
-{
-    CPU_Fetch(CPU);
-    if (!(CPU->SR & STATUS_ZERO))
-        CPU->OPCycle += 2;
-}
-
-inline void
-CPU_BMI(cpu *CPU)
-{
-    CPU_Fetch(CPU);
-    if (!(CPU->SR & STATUS_NEGATIVE))
-        CPU->OPCycle += 2;
-}
-
-inline void
-CPU_BNE(cpu *CPU)
-{
-    CPU_Fetch(CPU);
-    if (CPU->SR & STATUS_ZERO)
-        CPU->OPCycle += 2;
-}
-
-inline void
-CPU_BPL(cpu *CPU)
-{
-    CPU_Fetch(CPU);
-    if (CPU->SR & STATUS_NEGATIVE)
-        CPU->OPCycle += 2;
-}
-
-inline void
-CPU_BVC(cpu *CPU)
-{
-    CPU_Fetch(CPU);
-    if (CPU->SR & STATUS_OVERFLOW)
-        CPU->OPCycle += 2;
-}
-
-inline void
-CPU_BVS(cpu *CPU)
-{
-    CPU_Fetch(CPU);
-    if (!(CPU->SR & STATUS_OVERFLOW))
-        CPU->OPCycle += 2;
-}
+inline void CPU_BCC(cpu *CPU) { CPU_Branch(CPU,   CPU->SR & STATUS_CARRY); }
+inline void CPU_BCS(cpu *CPU) { CPU_Branch(CPU, !(CPU->SR & STATUS_CARRY)); }
+inline void CPU_BEQ(cpu *CPU) { CPU_Branch(CPU, !(CPU->SR & STATUS_ZERO)); }
+inline void CPU_BMI(cpu *CPU) { CPU_Branch(CPU, !(CPU->SR & STATUS_NEGATIVE)); }
+inline void CPU_BNE(cpu *CPU) { CPU_Branch(CPU,   CPU->SR & STATUS_ZERO); }
+inline void CPU_BPL(cpu *CPU) { CPU_Branch(CPU,   CPU->SR & STATUS_NEGATIVE); }
+inline void CPU_BVC(cpu *CPU) { CPU_Branch(CPU,   CPU->SR & STATUS_OVERFLOW); }
+inline void CPU_BVS(cpu *CPU) { CPU_Branch(CPU, !(CPU->SR & STATUS_OVERFLOW)); }
 
 inline void
 CPU_BranchLo(cpu *CPU)
 {
+    CPU_Read(CPU);
     u16 Old = CPU->PC;
     CPU->PC += (i8)CPU->Data;
     if ((CPU->PC & 0xFF00) == (Old & 0xFF00))
-        ++CPU->OPCycle;
-    CPU_Read(CPU);
+        CPU->OPCycle = 3;
 }
 
 inline void
@@ -1396,8 +1358,6 @@ CPU_FetchOP(cpu *CPU)
         CPU_Fetch(CPU);
         CPU->OP = OP_Table[CPU->Data];
     }
-    if (CPU->Data == 0)
-        i32 i = 0;
     CPU->OPCycle = 0;
     CPU->Address = CPU->PC;
 }
@@ -1407,9 +1367,14 @@ CPU_Step(cpu *CPU)
 {
     ++CPU->Cycles;
 
-    if ((CPU->OP.Cycles - 2) ==  CPU->OPCycle)
-        if (CPU->NMIOccurred || (CPU->IRQOccurred && !(CPU->SR & STATUS_INTERRUPT)))
-            CPU->Interrupt = true;
+    if (CPU->DMAActive)
+    {
+        CPU_DMACopy(CPU);
+        return;
+    }
+
+    if (CPU->OP.InterruptCheck == CPU->OPCycle)
+        CPU->Interrupt = CPU->NMIOccurred || (CPU->IRQOccurred && !(CPU->SR & STATUS_INTERRUPT));
 
     switch (CPU->OP.CycleOp[CPU->OPCycle++])
     {

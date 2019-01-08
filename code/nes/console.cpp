@@ -27,7 +27,8 @@ inline u8 PPU_ReadRegister(console *Console, u16 Address);
 inline void PPU_WriteRegister(console *Console, u16 Address, u8 Value);
 inline u8 APU_ReadRegister(console *Console, u16 Address);
 inline void APU_WriteRegister(console *Console, u16 Address, u8 Value);
-inline void Console_TriggerNMI(console *Console);
+inline void Console_SetNMI(console *Console);
+inline void Console_ClearNMI(console *Console);
 inline void Console_SetIRQ(console *Console, irq_source Source);
 inline void Console_ClearIRQ(console *Console, irq_source Source);
 inline void Console_NextFrame(console *Console);
@@ -90,9 +91,15 @@ APU_WriteRegister(console *Console, u16 Address, u8 Value)
 }
 
 inline void
-Console_TriggerNMI(console *Console)
+Console_SetNMI(console *Console)
 {
     Console->CPU->NMIOccurred = true;
+}
+
+inline void
+Console_ClearNMI(console *Console)
+{
+    Console->CPU->NMIOccurred = false;
 }
 
 inline void

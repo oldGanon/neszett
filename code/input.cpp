@@ -245,7 +245,7 @@ Input_LoadFM2(string Filename)
 
         Result = (gamepad_playback *)Api_Malloc(FrameCount * sizeof(gamepad_frame) + 8);
         Result->Size = FrameCount;
-        Result->Index = 1;
+        Result->Index = 0;
         gamepad_frame *Frame = Result->Frames;
         InputLog = File;
         while (InputLog.Length)

@@ -80,7 +80,8 @@ struct ppu
 inline void
 PPU_TriggerNMI(ppu *PPU)
 {
-    PPU->NMI = 14;
+    // PPU->NMI = 14;
+    PPU->NMI = 2;
 }
 
 inline u8
@@ -113,7 +114,7 @@ PPU_ReadStatus(ppu *PPU)
             PPU->SuppressVBL = true;
         if (PPU->Cycles <= 2)
             PPU->NMI = 0;
-    } 
+    }
     return S;
 }
 
@@ -540,7 +541,7 @@ inline void
 PPU_Step(ppu *PPU)
 {
     if (PPU->NMI && --PPU->NMI == 0)
-        Console_TriggerNMI(PPU->Console);
+        Console_SetNMI(PPU->Console);
 
     b32 Draw = PPU->Mask & (PPU_MASK_DRAWSPR | PPU_MASK_DRAWBG);
 

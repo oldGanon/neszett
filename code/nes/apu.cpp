@@ -404,7 +404,7 @@ APU_TimerStep(apu_dmc *DMC, console *Console)
     if (!DMC->Length) return;
     if (DMC->CurrLength && DMC->BitCount == 0)
     {
-        // Console->CPU->Busy += 4; // TODO:DONT FORGET THIS
+        // Console->CPU->Busy += 4; // TODO: DONT FORGET THIS
         DMC->Samples = Cart_Read(Console, DMC->CurrAddress++);
         DMC->BitCount = 8;
         if (!DMC->CurrAddress) DMC->CurrAddress = 0x8000;
@@ -490,10 +490,7 @@ static void
 APU_IRQ(apu *APU)
 {
     if (!(APU->FramCounter & 0x40))
-    {
         APU->Status |= 0x40;
-        Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
-    }
 }
 
 static void
@@ -563,6 +560,9 @@ APU_TimerStep(apu *APU)
 static void
 APU_Step(apu *APU)
 {
+    if (!(APU->FramCounter & 0x40) && (APU->Status & 0x40))
+        Console_SetIRQ(APU->Console, IRQ_SOURCE_APU);
+
     APU_SequencerStep(APU);
     APU_TimerStep(APU);
 
