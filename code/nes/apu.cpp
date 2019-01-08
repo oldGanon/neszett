@@ -218,9 +218,6 @@ APU_StepSweep(apu *APU)
         if (!(Square->Sweep.Flags & 0x80))
             continue;
 
-        if (Square->Timer.Period < 8 || Square->Timer.Period > 0x7FF)
-            continue;
-
         u8 Shift = (Square->Sweep.Flags & 0x07);
         u8 Negate = (Square->Sweep.Flags & 0x08);
         u16 Period = Square->Timer.Period >> Shift;
@@ -229,7 +226,11 @@ APU_StepSweep(apu *APU)
             Period ^= 0xFFFF;
             if (i) ++Period;
         }
-        Square->Timer.Period += Period;
+        u16 NewPeriod = Square->Timer.Period + Period;
+        if (NewPeriod < 8 || NewPeriod > 0x7FF)
+            continue;
+
+        Square->Timer.Period = NewPeriod;
     }
 }
 
@@ -242,9 +243,6 @@ APU_TimerClock(apu_square *Square)
 static void
 APU_WriteEnvelope(apu_square *Square, u8 Value)
 {
-    // value 4 bad (example smb1 death)
-    // if (Value == 4) return;
-
     Square->Duty.Mode = Value >> 6;
     Square->Envelope.Flags = Value & 0x3F;
 }
