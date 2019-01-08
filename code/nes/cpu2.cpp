@@ -413,7 +413,7 @@ inline void
 CPU_DMA(cpu *CPU, u8 Value)
 {
     CPU->DMAActive = true;
-    CPU->DMACycle = (CPU->Cycles & 1) ^ 1;
+    CPU->DMACycle = (CPU->Cycles & 1);
     CPU->DMAAddress = (u16)(Value & 0x7) << 8;
 }
 
@@ -457,19 +457,18 @@ inline void
 CPU_DMACopy(cpu *CPU)
 {
     u16 Cycle = CPU->DMACycle++;
-    if (Cycle < 2)
+    if (Cycle <= 1)
     {
         CPU_R(CPU, CPU->DMAAddress);
         return;
     }
+    else if (Cycle >= 513)
+        CPU->DMAActive = false;
     
     if (Cycle & 1)
         CPU_W(CPU, 0x2004, CPU->Data);
     else
         CPU->Data = CPU_R(CPU, CPU->DMAAddress++);
-
-    if (Cycle >= 513)
-        CPU->DMAActive = false;
 }
 
 // FLAGS
@@ -812,7 +811,7 @@ CPU_JSRLoPC(cpu *CPU)
 {
     CPU->Data = CPU->PC & 0xFF;
     CPU_Write(CPU);
-    --CPU->Address;
+    CPU->Address = (CPU->Address - 1) | 0x100;
 }
 
 inline void
@@ -820,7 +819,7 @@ CPU_JSRHiPC(cpu *CPU)
 {
     CPU->Data = CPU->PC >> 8;
     CPU_Write(CPU);
-    --CPU->Address;
+    CPU->Address = (CPU->Address - 1) | 0x100;
 }
 
 inline void
@@ -1206,10 +1205,9 @@ CPU_Branch(cpu *CPU, b32 Condition)
 {
     CPU_Fetch(CPU);
     if (Condition)
-    {
         CPU->OPCycle = 3;
-        CPU->Interrupt = CPU->NMIOccurred || (CPU->IRQOccurred && !(CPU->SR & STATUS_INTERRUPT));
-    }
+
+    CPU->Interrupt = CPU->NMIOccurred || (CPU->IRQOccurred && !(CPU->SR & STATUS_INTERRUPT));
 }
 
 inline void CPU_BCC(cpu *CPU) { CPU_Branch(CPU,   CPU->SR & STATUS_CARRY); }
@@ -1346,7 +1344,11 @@ CPU_TYA(cpu *CPU)
 
 inline void
 CPU_FetchOP(cpu *CPU)
-{    
+{
+    // SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO,
+    //     "%4X   A:%2X X:%2X Y:%2X P:%2X SP:%2X CYC:%u",
+    //     CPU->PC, CPU->A, CPU->X, CPU->Y, CPU->SR | 0x20, CPU->SP, CPU->Cycles);
+
     CPU->Address = CPU->PC;
     if (CPU->Interrupt)
     {
