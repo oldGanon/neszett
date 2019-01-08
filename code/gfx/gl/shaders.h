@@ -28,7 +28,7 @@ const char* BlitShaderFlippedV =
     "void main(){"
         "gl_Position = vec4(" GLSL_VERT_POSITION "*2.0-1.0,0.0,1.0);"
         "UV = " GLSL_VERT_POSITION ";"
-        "UV = vec2(UV.x, 1.0-UV.y) * vec2(312.0/258.0, 1.0);"
+        "UV = vec2(UV.x, 1.0-UV.y) * vec2(320.0/258.0, 1.0) - vec2(32.0/320.0, 0.0);"
     "}";
 
 const char* BlitShaderFittedV = 
@@ -44,7 +44,7 @@ const char* BlitShaderFittedV =
         "i = i / m;"
         "vec2 o = (1.0 - i) * 0.5;"
         "UV = " GLSL_VERT_POSITION ";"
-        "UV = o + i * (UV * vec2(256.0/312.0, 224.0/226.0) + vec2(32.0/312.0, 0.0)) + vec2(-31.0/312.0, 1.0/226.0);"
+        "UV = o + i * (UV * vec2(256.0/320.0, 224.0/226.0)) + vec2(27.0/320.0, 1.0/226.0);"
     "}";
 
 const char* BlitShaderAdjustedV = 

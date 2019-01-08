@@ -317,10 +317,18 @@ inline u8
 PPU_GetSpritePixel(ppu *PPU)
 {
     u8 X = (PPU->Cycles - 1) & 0xFF;
-    u16 Y = PPU->Scanline;
+    u8 Y = (PPU->Scanline - 1) & 0xFF;
     for (u8 i = 0; i < 8; ++i)
     {
         u8 n = i * 4;
+        
+        u8 SprY = PPU->OAM3[n];
+        if (Y < SprY) continue;
+        SprY = Y - SprY;
+        if (PPU->Controle & PPU_SPRSIZE)
+        { if(SprY > 15) continue; }
+        else if (SprY > 7) continue;
+
         u8 SprX = PPU->OAM3[n + 3];
         if (X < SprX) continue;
         SprX = X - SprX;

@@ -94,7 +94,7 @@ const char *NtscDemodulationShaderF =
         "float IQ = 0.0;"
         "n -= float(FIR)/2.0;"
         "for (int i = 0; i < FIR; ++i){"
-            "vec2 S = vec2((n + float(i)) / (312.0 * 8.0), UV.y);"
+            "vec2 S = vec2((n + float(i)) / (320.0 * 8.0), UV.y);"
             "Y += texture2D(" GLSL_UNIFORM_NTSC ", S).r * LowpassLUT[i];"
             "IQ += texture2D(" GLSL_UNIFORM_NTSC ", S).r * BandpassLUT[i];"
         "}"
@@ -121,7 +121,7 @@ const char *NtscChromaShaderF =
         "float n = floor(gl_FragCoord.x);"
         "n -= float(FIR)/2.0;"
         "for (int i = 0; i < FIR; ++i){"
-            "vec2 S = vec2((n + float(i)) / (312.0 * 8.0), UV.y);"
+            "vec2 S = vec2((n + float(i)) / (320.0 * 8.0), UV.y);"
             "Chroma += texture2D(" GLSL_UNIFORM_NTSC ", S).yz * LowpassLUT[i];"
         "}"
         "vec3 Color = YIQ2RGB * vec3(Luma, Chroma * " MACRO_STRING(NTSC_CHROMA_AMPLITUDE) ");"
@@ -140,7 +140,8 @@ const char* NtscBlitShaderF =
         "float Y = (floor(UV.y * Res.y) + 0.5) / Res.y;"
         "float fY = (UV.y - Y) * Res.y;"
         "float X = UV.x;"
-        "if (X < 0.0 || X > 280.0 / 320.0) X = 300.0 / 320.0;"
+        "if (X < 8.0 / 320.0) X = mod(X, 8.0 / 320.0) + 8.0 / 320.0;"
+        "if (X > 312.0 / 320.0) X = mod(X, 8.0 / 320.0) + 304.0 / 320.0;"
         "gl_FragColor.rgb = texture2D(" GLSL_UNIFORM_NTSC ",vec2(X,Y)).rgb;"
         "gl_FragColor.rgb *= Gaus(fY,-12.0)*0.5+0.5;"
     "}\0";
@@ -205,21 +206,21 @@ NTSC_Init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, 312 * 8, 226, 0, GL_RED, GL_FLOAT, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, 320 * 8, 226, 0, GL_RED, GL_FLOAT, 0);
 
     glBindTexture(GL_TEXTURE_2D, GL.NtscTextures[1]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 312 * 8, 226, 0, GL_RGB, GL_FLOAT, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 320 * 8, 226, 0, GL_RGB, GL_FLOAT, 0);
 
     glBindTexture(GL_TEXTURE_2D, GL.NtscTextures[2]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, 312 * 8, 226, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, 320 * 8, 226, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 }
 
 static void
@@ -228,8 +229,8 @@ NTSC_Blit(ivec2 WindowDim)
     f32 Phase = (f32)Atomic_Get(&GlobalPhase);
 
     /* MODULATE */
-    glScissor(0, 0, 312 * 8, 226);
-    glViewport(0, 0, 312 * 8, 226);
+    glScissor(0, 0, 320 * 8, 226);
+    glViewport(0, 0, 320 * 8, 226);
     glBindFramebuffer(GL_FRAMEBUFFER, GL.NtscFramebuffer);
     glUseProgram(GL.NtscShader[0]);
     glUniform1f(GL.NtscPhaseUniform[0], Phase);
