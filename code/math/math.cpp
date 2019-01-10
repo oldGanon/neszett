@@ -56,9 +56,9 @@ inline f32
 Floor(f32 n)
 {
 #if COMPILE_SSE
-    return _mm_cvtss_f32(_mm_floor_ps(_mm_set1_ps(n)));
+    return _mm_cvtss_f32(_mm_floor_ps(_mm_set_ss(n)));
 #elif COMPILE_X64
-    __m128 F = _mm_set1_ps(n);
+    __m128 F = _mm_set_ps(n);
     __m128 T = _mm_cvtepi32_ps(_mm_cvttps_epi32(F));
     return _mm_cvtss_f32(_mm_sub_ps(T, _mm_and_ps(_mm_cmplt_ps(F, T), _mm_set_ss(1.0f))));
 #else
@@ -66,8 +66,28 @@ Floor(f32 n)
 #endif
 }
 
+inline f64
+Floor(f64 n)
+{
+#if COMPILE_SSE
+    return _mm_cvtsd_f64(_mm_floor_pd(_mm_set_sd(n)));
+#elif COMPILE_X64
+    __m128 F = _mm_set_pd(n);
+    __m128 T = _mm_cvtepi32_pd(_mm_cvttpd_epi32(F));
+    return _mm_cvtsd_f64(_mm_sub_pd(T, _mm_and_pd(_mm_cmplt_pd(F, T), _mm_set_sd(1.0))));
+#else
+    return floor(n);
+#endif
+}
+
 inline f32
 Fract(f32 n)
+{
+    return n - Floor(n);
+}
+
+inline f64
+Fract(f64 n)
 {
     return n - Floor(n);
 }

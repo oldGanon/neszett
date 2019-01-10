@@ -34,7 +34,12 @@ Gamepad_Read(gamepad *Gamepad, u8 Index)
     if (Gamepad->Playback)
         Buttons = Gamepad_GetPlaybackButtons(Gamepad->Playback, Index);
     else
-        Buttons = Api_GetGamepad();
+    {
+        if (Index == 0)
+            Buttons = Api_GetGamepad();
+        else
+            Buttons = 0;
+    }
 
     if (Gamepad->Strobe) Gamepad->ReadSerial[Index] = 0;
     u8 Result = Buttons >> Gamepad->ReadSerial[Index]++;

@@ -1236,54 +1236,14 @@ CPU_BranchHi(cpu *CPU)
     // Carry is already done last cycle
 }
 
-inline void
-CPU_CLC(cpu *CPU)
-{
-    CPU_Read(CPU);
-    CPU_ClearC(CPU);
-}
+inline void CPU_CLC(cpu *CPU) { CPU_Read(CPU); CPU_ClearC(CPU); }
+inline void CPU_CLD(cpu *CPU) { CPU_Read(CPU); CPU_ClearD(CPU); }
+inline void CPU_CLI(cpu *CPU) { CPU_Read(CPU); CPU_ClearI(CPU); }
+inline void CPU_CLV(cpu *CPU) { CPU_Read(CPU); CPU_ClearV(CPU); }
 
-inline void
-CPU_CLD(cpu *CPU)
-{
-    CPU_Read(CPU);
-    CPU_ClearD(CPU);
-}
-
-inline void
-CPU_CLI(cpu *CPU)
-{
-    CPU_Read(CPU);
-    CPU_ClearI(CPU);
-}
-
-inline void
-CPU_CLV(cpu *CPU)
-{
-    CPU_Read(CPU);
-    CPU_ClearV(CPU);
-}
-
-inline void
-CPU_SEC(cpu *CPU)
-{
-    CPU_Read(CPU);
-    CPU_SetC(CPU);
-}
-
-inline void
-CPU_SED(cpu *CPU)
-{
-    CPU_Read(CPU);
-    CPU_SetD(CPU);
-}
-
-inline void
-CPU_SEI(cpu *CPU)
-{
-    CPU_Read(CPU);
-    CPU_SetI(CPU);
-}
+inline void CPU_SEC(cpu *CPU) { CPU_Read(CPU); CPU_SetC(CPU); }
+inline void CPU_SED(cpu *CPU) { CPU_Read(CPU); CPU_SetD(CPU); }
+inline void CPU_SEI(cpu *CPU) { CPU_Read(CPU); CPU_SetI(CPU); }
 
 inline void
 CPU_TAX(cpu *CPU)

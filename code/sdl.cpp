@@ -350,17 +350,20 @@ static i32
 NES_Thread(void *Data)
 {
     f64 TargetTimePerUpdate = GlobalPerfCountFrequency / (f64)CPU_HZ;
-    f64 LastTime = (f64)Main_GetWallClock();
+    f64 LastFract = 0.0;
+    u64 LastTime = Main_GetWallClock();
 
     while (GlobalRunning)
     {
         Console_Step(GlobalConsole);
 
         /* TIMING */
-        f64 TargetTime = LastTime + TargetTimePerUpdate;
-        f64 CurrentTime = (f64)Main_GetWallClock();
+        LastFract += TargetTimePerUpdate;
+        u64 TargetTime = LastTime + (u64)LastFract;
+        u64 CurrentTime = Main_GetWallClock();
         while (CurrentTime < TargetTime)
-            CurrentTime = (f64)Main_GetWallClock();
+            CurrentTime = Main_GetWallClock();
+        LastFract = Fract(LastFract);
         LastTime = TargetTime;
     }
 
@@ -863,66 +866,35 @@ Main_CollectEvents(SDL_Window *Window, main_state *MainState)
     }
 }
 
+#define CHECK_CPU_FEATURE(F) \
+    if (!CPUID.Has##F) { \
+        Api_Error(S( #F " is not supported on this CPU!" )); \
+        AllFeatures = false; } \
+
 static b32
 Main_CheckCPUFeatures()
 {
     b32 AllFeatures = true;
 
 #if COMPILE_DEV
-    if (!CPUID.HasRDTSC)
-    {
-        Api_Error(S("RDTSC is not supported on this CPU!"));
-        AllFeatures = false;
-    }
+    CHECK_CPU_FEATURE(RDTSC);
 #endif
     
 #if COMPILE_X64
-    if (!CPUID.HasSSE)
-    {
-        Api_Error(S("SSE is not supported on this CPU!"));
-        AllFeatures = false;
-    }
-    if (!CPUID.HasSSE2)
-    {
-        Api_Error(S("SSE2 is not supported on this CPU!"));
-        AllFeatures = false;
-    }
-    if (!CPUID.HasSSE3)
-    {
-        Api_Error(S("SSE3 is not supported on this CPU!"));
-        AllFeatures = false;
-    }
+    CHECK_CPU_FEATURE(SSE);
+    CHECK_CPU_FEATURE(SSE2);
+    CHECK_CPU_FEATURE(SSE3);
 
     #if COMPILE_SSE
-        if (!CPUID.HasSSSE3)
-        {
-            Api_Error(S("SSSE3 is not supported on this CPU!"));
-            AllFeatures = false;
-        }
-        if (!CPUID.HasSSE41)
-        {
-            Api_Error(S("SSE4.1 is not supported on this CPU!"));
-            AllFeatures = false;
-        }
-        if (!CPUID.HasSSE42)
-        {
-            Api_Error(S("SSE4.2 is not supported on this CPU!"));
-            AllFeatures = false;
-        }
-        if (!CPUID.HasFMA)
-        {
-            Api_Error(S("FMA is not supported on this CPU!"));
-            AllFeatures = false;
-        }
+        CHECK_CPU_FEATURE(SSSE3);
+        CHECK_CPU_FEATURE(SSE41);
+        CHECK_CPU_FEATURE(SSE42);
+        CHECK_CPU_FEATURE(FMA);
     #endif
 #endif
 
 #if COMPILE_NEON
-    if (!SDL_HasNEON())
-    {
-        Api_Error(S("NEON is not supported on this CPU!"));
-        AllFeatures = false;
-    }
+    CHECK_CPU_FEATURE(NEON);
 #endif
     
     return AllFeatures;

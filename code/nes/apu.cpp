@@ -1,6 +1,6 @@
 
-#define APU_DAC_HZ 43653
-#define APU_DAC_CPU_HZ 41 // (CPU_HZ / APU_DAC_HZ)
+#define APU_DAC_HZ 48000
+#define APU_DAC_CPU_HZ (APU_DAC_HZ / CPU_HZ)
 
 #define APU_RUNNNING_AVG_LENGTH 512
 #define APU_RUNNNING_AVG_NEW_FACTOR (1.0f / APU_RUNNNING_AVG_LENGTH)
@@ -102,8 +102,8 @@ struct apu
 
     u16 Sequencer;
 
-    u16 DAC;
     f32 RunningAverage;
+    f64 DAC;
 };
 
 static u8 APU_LengthLUT[32] =
@@ -192,7 +192,7 @@ APU_SampleOut(apu *APU)
     APU->RunningAverage = NewAverage;
 
     SDL_QueueAudio(GlobalAudioDevice, &Out, 4);
-    APU->DAC = 0;
+    APU->DAC -= 1.0;
 }
 
 //
@@ -564,7 +564,8 @@ APU_Step(apu *APU)
     APU_SequencerStep(APU);
     APU_TimerStep(APU);
 
-    if (++APU->DAC >= APU_DAC_CPU_HZ)
+    APU->DAC += APU_DAC_CPU_HZ;
+    if (APU->DAC >= 1.0)
         APU_SampleOut(APU);
 }
 
