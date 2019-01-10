@@ -59,6 +59,8 @@ global console *GlobalConsole = 0;
 
 #include "input.cpp"
 
+#include "menu.cpp"
+
 struct main_state
 {
     thread NESThread;
@@ -285,6 +287,12 @@ inline u8
 Api_GetGamepad()
 {
     return GlobalGamepad;
+}
+
+inline u64
+Api_GetTime()
+{
+    return SDL_GetPerformanceCounter();
 }
 
 /*--------------*/
@@ -962,6 +970,9 @@ int SDL_main(int argc, char **argv)
     SDL_RaiseWindow(Window);
     SDL_DisableScreenSaver();
 
+    /* MENU */
+    MainState.NESThread = Thread_Create(Intro_Thread, 0);
+
     /* INPUT */
     Input_Init(&MainState.Input);
     SDL_GameControllerAddMapping(GamePadDB);
@@ -985,7 +996,7 @@ int SDL_main(int argc, char **argv)
 #endif
         OpenGL_Blit(Main_GetWindowSize(Window));
         SDL_GL_SwapWindow(Window);
-        SDL_Delay(1);
+        // SDL_Delay(1);
 
         /* FRAME TIMING */
         u64 EndTime = Main_GetWallClock();

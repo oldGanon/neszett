@@ -55,6 +55,7 @@ inline void Api_PrintString(u32 Target, string String);
 #define Api_Error(S)   Api_PrintString(1, S)
 #define Api_Warning(S) Api_PrintString(2, S)
 inline u8 Api_GetGamepad();
+inline u64 Api_GetTime();
 
 /* ATOMICS */
 struct atomic;

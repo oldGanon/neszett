@@ -95,15 +95,15 @@ struct apu
     apu_noise Noise;
     apu_dmc DMC;
 
+    f64 DAC;
+    f32 RunningAverage;
+
     u8 Even;
 
     u8 Status;
     u8 FramCounter;
 
     u16 Sequencer;
-
-    f32 RunningAverage;
-    f64 DAC;
 };
 
 static u8 APU_LengthLUT[32] =
