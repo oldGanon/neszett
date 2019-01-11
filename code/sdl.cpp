@@ -796,12 +796,11 @@ Main_CollectEvents(SDL_Window *Window, main_state *MainState)
                 else if (String_EndsWith(Filename, S(".fm2")))
                 {
                     gamepad_playback *Playback = Input_LoadFM2(Filename);
-                    if (Playback)
+                    if (Playback && GlobalConsole)
                     {
                         NES_Pause(MainState);
                         Gamepad_SetPlayback(GlobalConsole->Gamepad, Playback);
-                        if (GlobalConsole)
-                            Console_Power(GlobalConsole);
+                        Console_Power(GlobalConsole);
                         NES_Resume(MainState);
                     }
                 }
