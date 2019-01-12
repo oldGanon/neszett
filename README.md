@@ -60,4 +60,4 @@ alt="Super Mario Bros. in 04:57.31 (TAS) by HappyLee" width="320" height="180" b
 
 ---
 
-[logo]: ../docs/logo.png "Neszett"
+[logo]: docs/logo.png "Neszett"
