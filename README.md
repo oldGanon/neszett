@@ -50,13 +50,13 @@ Controls mapping can be changed in the _controls.txt_ file.
 
 # Videos
 
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=CWrrgy-6Uc8
-" target="_blank"><img src="http://img.youtube.com/vi/CWrrgy-6Uc8/0.jpg" 
-alt="Super Mario Bros. 3 in 10:24.94 (TAS) by Lord Tom, Maru & Tompa" width="320" height="180" border="10" /></a>
-
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=z7aRUu_yGLo
-" target="_blank"><img src="http://img.youtube.com/vi/z7aRUu_yGLo/0.jpg" 
-alt="Super Mario Bros. in 04:57.31 (TAS) by HappyLee" width="320" height="180" border="10" /></a>
+" target="_blank"><img src="https://raw.githubusercontent.com/oldGanon/neszett/master/docs/smb1_title.png" 
+alt="Super Mario Bros. in 04:57.31 (TAS) by HappyLee" width="320" height="240" border="10" /></a>
+
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=CWrrgy-6Uc8
+" target="_blank"><img src="https://raw.githubusercontent.com/oldGanon/neszett/master/docs/smb3_title.png" 
+alt="Super Mario Bros. 3 in 10:24.94 (TAS) by Lord Tom, Maru & Tompa" width="320" height="240" border="10" /></a>
 
 ---
 
