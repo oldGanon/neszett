@@ -2,7 +2,7 @@
 struct cpu_op
 {
     u8 InterruptCheck;
-    u8 CycleOp[7];
+    u8 CycleOp[8];
 };
 
 struct cpu
@@ -145,6 +145,20 @@ enum cpu_cycle_op
     TXA,
     TXS,
     TYA,
+    // ILLEGAL
+    DCP,
+    ISC,
+    LAX,
+    SAX,
+    SLO,
+    RLA,
+    SRE,
+    RRA,
+    ANC,
+    ALR,
+    ARR,
+    AXS,
+    KIL,
 };
 
 #define REG_OP_imm(OP)  { 0, OP,         FETCH_OP }
@@ -309,6 +323,9 @@ enum cpu_cycle_op
 #define RMW_OP_zpgX(OP) { 4, FETCH_ZPG,  ADDR_ADD_X, READ_DATA,    OP,         WRITE_DATA, FETCH_OP }
 #define RMW_OP_abs(OP)  { 4, FETCH_DATA, FETCH_ADDR, READ_DATA,    OP,         WRITE_DATA, FETCH_OP }
 #define RMW_OP_absX(OP) { 5, FETCH_DATA, FETCH_ADDR, ADDR_ADD_X_C, READ_DATA,  OP,         WRITE_DATA, FETCH_OP }
+#define RMW_OP_absY(OP) { 5, FETCH_DATA, FETCH_ADDR, ADDR_ADD_Y_C, READ_DATA,  OP,         WRITE_DATA, FETCH_OP }
+#define RMW_OP_indX(OP) { 6, FETCH_ZPG,  ADDR_ADD_X, READ_WRAP,    READ_ADDR,  READ_DATA,  OP,         WRITE_DATA, FETCH_OP }
+#define RMW_OP_indY(OP) { 6, FETCH_ZPG,  READ_WRAP,  READ_ADDR_Y,  ADDR_CARRY, READ_DATA,  OP,         WRITE_DATA, FETCH_OP }
 
 #define ASL_acc  RMW_OP_acc (ASL)
 #define ASL_zpg  RMW_OP_zpg (ASL)
@@ -371,7 +388,8 @@ enum cpu_cycle_op
 #define JMP_ind { 3, READ_NEXT,  READ_ADDR, READ_WRAP, READ_PC,   FETCH_OP }
 #define JSR_abs { 4, FETCH_DATA, JSR_BEGIN, JSR_HI_PC, JSR_LO_PC, JSR_END, FETCH_OP }
 
-#define NOP_imp { 0, READ_DATA, FETCH_OP }
+#define NOP_imp  { 0, READ_DATA,  FETCH_OP }
+
 
 #define PHA_imp { 1, READ_DATA, PUSH_A,  FETCH_OP }
 #define PHP_imp { 1, READ_DATA, PUSH_SR, FETCH_OP }
@@ -389,24 +407,100 @@ enum cpu_cycle_op
 #define TXS_imp { 0, TXS, FETCH_OP }
 #define TYA_imp { 0, TYA, FETCH_OP }
 
+// ILLEGAL OPCODES
+
+#define DCP_zpg  RMW_OP_zpg (DCP)
+#define DCP_zpgX RMW_OP_zpgX(DCP)
+#define DCP_abs  RMW_OP_abs (DCP)
+#define DCP_absX RMW_OP_absX(DCP)
+#define DCP_absY RMW_OP_absY(DCP)
+#define DCP_indX RMW_OP_indX(DCP)
+#define DCP_indY RMW_OP_indY(DCP)
+
+#define ISC_zpg  RMW_OP_zpg (ISC)
+#define ISC_zpgX RMW_OP_zpgX(ISC)
+#define ISC_abs  RMW_OP_abs (ISC)
+#define ISC_absX RMW_OP_absX(ISC)
+#define ISC_absY RMW_OP_absY(ISC)
+#define ISC_indX RMW_OP_indX(ISC)
+#define ISC_indY RMW_OP_indY(ISC)
+
+#define LAX_imm  REG_OP_imm (LAX)
+#define LAX_zpg  REG_OP_zpg (LAX)
+#define LAX_zpgY REG_OP_zpgY(LAX)
+#define LAX_abs  REG_OP_abs (LAX)
+#define LAX_absY REG_OP_absY(LAX)
+#define LAX_indX REG_OP_indX(LAX)
+#define LAX_indY REG_OP_indY(LAX)
+
+#define SAX_zpg  REG_OP_zpg (SAX)
+#define SAX_zpgY REG_OP_zpgY(SAX)
+#define SAX_abs  REG_OP_abs (SAX)
+#define SAX_indX REG_OP_indX(SAX)
+
+#define SLO_zpg  RMW_OP_zpg (SLO)
+#define SLO_zpgX RMW_OP_zpgX(SLO)
+#define SLO_abs  RMW_OP_abs (SLO)
+#define SLO_absX RMW_OP_absX(SLO)
+#define SLO_absY RMW_OP_absY(SLO)
+#define SLO_indX RMW_OP_indX(SLO)
+#define SLO_indY RMW_OP_indY(SLO)
+
+#define RLA_zpg  RMW_OP_zpg (RLA)
+#define RLA_zpgX RMW_OP_zpgX(RLA)
+#define RLA_abs  RMW_OP_abs (RLA)
+#define RLA_absX RMW_OP_absX(RLA)
+#define RLA_absY RMW_OP_absY(RLA)
+#define RLA_indX RMW_OP_indX(RLA)
+#define RLA_indY RMW_OP_indY(RLA)
+
+#define SRE_zpg  RMW_OP_zpg (SRE)
+#define SRE_zpgX RMW_OP_zpgX(SRE)
+#define SRE_abs  RMW_OP_abs (SRE)
+#define SRE_absX RMW_OP_absX(SRE)
+#define SRE_absY RMW_OP_absY(SRE)
+#define SRE_indX RMW_OP_indX(SRE)
+#define SRE_indY RMW_OP_indY(SRE)
+
+#define RRA_zpg  RMW_OP_zpg (RRA)
+#define RRA_zpgX RMW_OP_zpgX(RRA)
+#define RRA_abs  RMW_OP_abs (RRA)
+#define RRA_absX RMW_OP_absX(RRA)
+#define RRA_absY RMW_OP_absY(RRA)
+#define RRA_indX RMW_OP_indX(RRA)
+#define RRA_indY RMW_OP_indY(RRA)
+
+#define ANC_imm { 0, ANC, FETCH_OP }
+#define ALR_imm { 0, ALR, FETCH_OP }
+#define ARR_imm { 0, ALR, FETCH_OP }
+#define AXS_imm { 0, AXS, FETCH_OP }
+
+#define NOP_imm  { 0, FETCH_DATA, FETCH_OP }
+#define NOP_zpg  { 1, FETCH_ZPG,  READ_DATA,    FETCH_OP }
+#define NOP_zpgX { 2, FETCH_ZPG,  ADDR_ADD_X,   READ_DATA,  FETCH_OP }
+#define NOP_abs  { 3, FETCH_DATA, FETCH_ADDR,   READ_DATA,  FETCH_OP }
+#define NOP_absX { 3, FETCH_DATA, FETCH_ADDR_X, ADDR_CARRY, READ_DATA, FETCH_OP }
+
+#define KIL_imp { 0xFF, KIL }
+
 const cpu_op OP_Table[256] =
 {
-    BRK_imp, ORA_indX, {},      {}, {},       ORA_zpg,  ASL_zpg,  {}, PHP_imp, ORA_imm,  ASL_acc, {}, {},       ORA_abs,  ASL_abs,  {},
-    BPL_rel, ORA_indY, {},      {}, {},       ORA_zpgX, ASL_zpgX, {}, CLC_imp, ORA_absY, {},      {}, {},       ORA_absX, ASL_absX, {},
-    JSR_abs, AND_indX, {},      {}, BIT_zpg,  AND_zpg,  ROL_zpg,  {}, PLP_imp, AND_imm,  ROL_acc, {}, BIT_abs,  AND_abs,  ROL_abs,  {},
-    BMI_rel, AND_indY, {},      {}, {},       AND_zpgX, ROL_zpgX, {}, SEC_imp, AND_absY, {},      {}, {},       AND_absX, ROL_absX, {},
-    RTI_imp, EOR_indX, {},      {}, {},       EOR_zpg,  LSR_zpg,  {}, PHA_imp, EOR_imm,  LSR_acc, {}, JMP_abs,  EOR_abs,  LSR_abs,  {},
-    BVC_rel, EOR_indY, {},      {}, {},       EOR_zpgX, LSR_zpgX, {}, CLI_imp, EOR_absY, {},      {}, {},       EOR_absX, LSR_absX, {},
-    RTS_imp, ADC_indX, {},      {}, {},       ADC_zpg,  ROR_zpg,  {}, PLA_imp, ADC_imm,  ROR_acc, {}, JMP_ind,  ADC_abs,  ROR_abs,  {},
-    BVS_rel, ADC_indY, {},      {}, {},       ADC_zpgX, ROR_zpgX, {}, SEI_imp, ADC_absY, {},      {}, {},       ADC_absX, ROR_absX, {},
-    {},      STA_indX, {},      {}, STY_zpg,  STA_zpg,  STX_zpg,  {}, DEY_imp, {},       TXA_imp, {}, STY_abs,  STA_abs,  STX_abs,  {},
-    BCC_rel, STA_indY, {},      {}, STY_zpgX, STA_zpgX, STX_zpgY, {}, TYA_imp, STA_absY, TXS_imp, {}, {},       STA_absX, {},       {},
-    LDY_imm, LDA_indX, LDX_imm, {}, LDY_zpg,  LDA_zpg,  LDX_zpg,  {}, TAY_imp, LDA_imm,  TAX_imp, {}, LDY_abs,  LDA_abs,  LDX_abs,  {},
-    BCS_rel, LDA_indY, {},      {}, LDY_zpgX, LDA_zpgX, LDX_zpgY, {}, CLV_imp, LDA_absY, TSX_imp, {}, LDY_absX, LDA_absX, LDX_absY, {},
-    CPY_imm, CMP_indX, {},      {}, CPY_zpg,  CMP_zpg,  DEC_zpg,  {}, INY_imp, CMP_imm,  DEX_imp, {}, CPY_abs,  CMP_abs,  DEC_abs,  {},
-    BNE_rel, CMP_indY, {},      {}, {},       CMP_zpgX, DEC_zpgX, {}, CLD_imp, CMP_absY, {},      {}, {},       CMP_absX, DEC_absX, {},
-    CPX_imm, SBC_indX, {},      {}, CPX_zpg,  SBC_zpg,  INC_zpg,  {}, INX_imp, SBC_imm,  NOP_imp, {}, CPX_abs,  SBC_abs,  INC_abs,  {},
-    BEQ_rel, SBC_indY, {},      {}, {},       SBC_zpgX, INC_zpgX, {}, SED_imp, SBC_absY, {},      {}, {},       SBC_absX, INC_absX, {},
+    BRK_imp, ORA_indX, KIL_imp, SLO_indX, NOP_zpg,  ORA_zpg,  ASL_zpg,  SLO_zpg,  PHP_imp, ORA_imm,  ASL_acc, ANC_imm,  NOP_abs,  ORA_abs,  ASL_abs,  SLO_abs,
+    BPL_rel, ORA_indY, KIL_imp, SLO_indY, NOP_zpgX, ORA_zpgX, ASL_zpgX, SLO_zpgX, CLC_imp, ORA_absY, NOP_imp, SLO_absY, NOP_absX, ORA_absX, ASL_absX, SLO_absX,
+    JSR_abs, AND_indX, KIL_imp, RLA_indX, BIT_zpg,  AND_zpg,  ROL_zpg,  RLA_zpg,  PLP_imp, AND_imm,  ROL_acc, ANC_imm,  BIT_abs,  AND_abs,  ROL_abs,  RLA_abs,
+    BMI_rel, AND_indY, KIL_imp, RLA_indY, NOP_zpgX, AND_zpgX, ROL_zpgX, RLA_zpgX, SEC_imp, AND_absY, NOP_imp, RLA_absY, NOP_absX, AND_absX, ROL_absX, RLA_absX,
+    RTI_imp, EOR_indX, KIL_imp, SRE_indX, NOP_zpg,  EOR_zpg,  LSR_zpg,  SRE_zpg,  PHA_imp, EOR_imm,  LSR_acc, ALR_imm,  JMP_abs,  EOR_abs,  LSR_abs,  SRE_abs,
+    BVC_rel, EOR_indY, KIL_imp, SRE_indY, NOP_zpgX, EOR_zpgX, LSR_zpgX, SRE_zpgX, CLI_imp, EOR_absY, NOP_imp, SRE_absY, NOP_absX, EOR_absX, LSR_absX, SRE_absX,
+    RTS_imp, ADC_indX, KIL_imp, RRA_indX, NOP_zpg,  ADC_zpg,  ROR_zpg,  RRA_zpg,  PLA_imp, ADC_imm,  ROR_acc, ARR_imm,  JMP_ind,  ADC_abs,  ROR_abs,  RRA_abs,
+    BVS_rel, ADC_indY, KIL_imp, RRA_indY, NOP_zpgX, ADC_zpgX, ROR_zpgX, RRA_zpgX, SEI_imp, ADC_absY, NOP_imp, RRA_absY, NOP_absX, ADC_absX, ROR_absX, RRA_absX,
+    NOP_imm, STA_indX, NOP_imm, SAX_indX, STY_zpg,  STA_zpg,  STX_zpg,  SAX_zpg,  DEY_imp, NOP_imm,  TXA_imp, {},       STY_abs,  STA_abs,  STX_abs,  SAX_abs,
+    BCC_rel, STA_indY, KIL_imp, {},       STY_zpgX, STA_zpgX, STX_zpgY, SAX_zpgY, TYA_imp, STA_absY, TXS_imp, {},       {},       STA_absX, {},       {},
+    LDY_imm, LDA_indX, LDX_imm, LAX_indX, LDY_zpg,  LDA_zpg,  LDX_zpg,  LAX_zpg,  TAY_imp, LDA_imm,  TAX_imp, LAX_imm,  LDY_abs,  LDA_abs,  LDX_abs,  LAX_abs,
+    BCS_rel, LDA_indY, KIL_imp, LAX_indY, LDY_zpgX, LDA_zpgX, LDX_zpgY, LAX_zpgY, CLV_imp, LDA_absY, TSX_imp, LAX_absY, LDY_absX, LDA_absX, LDX_absY, LAX_absY,
+    CPY_imm, CMP_indX, NOP_imm, DCP_indX, CPY_zpg,  CMP_zpg,  DEC_zpg,  DCP_zpg,  INY_imp, CMP_imm,  DEX_imp, AXS_imm,  CPY_abs,  CMP_abs,  DEC_abs,  DCP_abs,
+    BNE_rel, CMP_indY, KIL_imp, DCP_indY, NOP_zpgX, CMP_zpgX, DEC_zpgX, DCP_zpgX, CLD_imp, CMP_absY, NOP_imp, DCP_absY, NOP_absX, CMP_absX, DEC_absX, DCP_absX,
+    CPX_imm, SBC_indX, NOP_imm, ISC_indX, CPX_zpg,  SBC_zpg,  INC_zpg,  ISC_zpg,  INX_imp, SBC_imm,  NOP_imp, SBC_imm,  CPX_abs,  SBC_abs,  INC_abs,  ISC_abs,
+    BEQ_rel, SBC_indY, KIL_imp, ISC_indY, NOP_zpgX, SBC_zpgX, INC_zpgX, ISC_zpgX, SED_imp, SBC_absY, NOP_imp, ISC_absY, NOP_absX, SBC_absX, INC_absX, ISC_absX,
 };
 
 inline void
@@ -969,6 +1063,7 @@ CPU_LDA(cpu *CPU)
     if (CPU->A == 0) CPU_SetZ(CPU);
     if (CPU->A & 0x80) CPU_SetN(CPU);
 }
+
 inline void
 CPU_LDX(cpu *CPU)
 {
@@ -979,6 +1074,7 @@ CPU_LDX(cpu *CPU)
     if (CPU->X == 0) CPU_SetZ(CPU);
     if (CPU->X & 0x80) CPU_SetN(CPU);
 }
+
 inline void
 CPU_LDY(cpu *CPU)
 {
@@ -1302,6 +1398,173 @@ CPU_TYA(cpu *CPU)
     if (CPU->A & 0x80) CPU_SetN(CPU);
 }
 
+// ILLEGAL
+
+inline void
+CPU_LAX(cpu *CPU)
+{
+    CPU_Read(CPU);
+    CPU->A = CPU->Data;
+    CPU->X = CPU->Data;
+    CPU_ClearNZ(CPU);
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+}
+
+inline void
+CPU_SAX(cpu *CPU)
+{
+    CPU->Data = CPU->A & CPU->X;
+    CPU_Write(CPU);
+}
+
+inline void
+CPU_DCP(cpu *CPU)
+{
+    CPU_Write(CPU);
+    --CPU->Data;
+    CPU_ClearNZC(CPU);
+    if (CPU->A >= CPU->Data) CPU_SetC(CPU);
+    if (CPU->A == CPU->Data) CPU_SetZ(CPU);
+    if ((u8)(CPU->A - CPU->Data) & 0x80) CPU_SetN(CPU);
+}
+
+inline void
+CPU_ISC(cpu *CPU)
+{
+    CPU_Write(CPU);
+    ++CPU->Data;
+    
+    u16 I = ((u16)CPU->Data + (u16)(CPU->SR & STATUS_CARRY ^ 1));
+    I = (u16)CPU->A - I;
+    u8 A = I & 0xFF;
+
+    CPU_ClearNVZC(CPU);
+    if (A == 0) CPU_SetZ(CPU);
+    if (A & 0x80) CPU_SetN(CPU);
+    if (I <= 255) CPU_SetC(CPU);
+    if ((CPU->A ^ CPU->Data) & (CPU->A ^ A) & 0x80) CPU_SetV(CPU);
+    
+    CPU->A = A;
+}
+
+inline void
+CPU_SLO(cpu *CPU)
+{
+    CPU_Write(CPU);
+    CPU_ClearNZC(CPU);
+    CPU->SR |= CPU->Data >> 7;
+    CPU->Data <<= 1;
+    CPU->A |= CPU->Data;
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+}
+
+inline void
+CPU_RLA(cpu *CPU)
+{
+    CPU_Write(CPU);
+    u8 Carry = CPU->SR & STATUS_CARRY;
+    CPU_ClearNZC(CPU);
+    CPU->SR |= CPU->Data >> 7;
+    CPU->Data <<= 1;
+    CPU->Data |= Carry;
+    CPU->A &= CPU->Data;
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+}
+
+inline void
+CPU_SRE(cpu *CPU)
+{
+    CPU_Write(CPU);
+    u8 Carry = CPU->SR & STATUS_CARRY;
+    CPU_ClearNZC(CPU);
+    CPU->SR |= CPU->Data & STATUS_CARRY;
+    CPU->Data >>= 1;
+    CPU->A ^= CPU->Data;
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+}
+
+inline void
+CPU_RRA(cpu *CPU)
+{
+    CPU_Write(CPU);
+    u8 Carry = CPU->SR & STATUS_CARRY;
+    CPU_ClearC(CPU);
+    CPU->SR |= CPU->Data & STATUS_CARRY;
+    CPU->Data >>= 1;
+    CPU->Data |= Carry << 7;
+
+    u16 I = (u16)CPU->Data + (u16)(CPU->SR & STATUS_CARRY);
+    I = (u16)CPU->A + I;
+    u8 A = I & 0xFF;
+
+    CPU_ClearNVZC(CPU);
+    if (A == 0) CPU_SetZ(CPU);
+    if (A & 0x80) CPU_SetN(CPU);
+    if (I > 255) CPU_SetC(CPU);
+    if ((CPU->A ^ A) & (CPU->Data ^ A) & 0x80) CPU_SetV(CPU);
+
+    CPU->A = A;
+}
+
+inline void
+CPU_ANC(cpu *CPU)
+{
+    CPU_Read(CPU);
+    CPU_ClearNZC(CPU);
+    CPU->A &= CPU->Data;
+    CPU->SR |= CPU->Data >> 7;
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+}
+
+inline void
+CPU_ALR(cpu *CPU)
+{
+    CPU_Read(CPU);
+    CPU_ClearNZC(CPU);
+    CPU->A &= CPU->Data;
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+    
+    CPU->SR |= CPU->Data & STATUS_CARRY;
+    CPU->Data >>= 1;
+}
+
+inline void
+CPU_ARR(cpu *CPU)
+{
+    CPU_Read(CPU);
+    CPU->A &= CPU->Data;
+    u16 A = ((u16)CPU->A + (u16)CPU->Data + (u16)(CPU->SR & STATUS_CARRY)) & 0xFF;
+    CPU_ClearV(CPU);
+    if ((CPU->A ^ A) & (CPU->Data ^ A) & 0x80) CPU_SetV(CPU);
+
+    u8 Carry = (CPU->SR & STATUS_CARRY) << 7;
+    CPU_ClearNZC(CPU);
+    CPU->SR |= CPU->A & STATUS_CARRY;
+    CPU->A >>= 1;
+    CPU->A |= Carry;
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+}
+
+inline void
+CPU_AXS(cpu *CPU)
+{
+    CPU_Read(CPU);
+    CPU_ClearNZC(CPU);
+    CPU->A &= CPU->Data;
+    if (CPU->A == 0) CPU_SetZ(CPU);
+    if (CPU->A & 0x80) CPU_SetN(CPU);
+    
+}
+
+// 
+
 inline void
 CPU_FetchOP(cpu *CPU)
 {
@@ -1438,6 +1701,20 @@ CPU_Step(cpu *CPU)
         case TXA: CPU_TXA(CPU); break;
         case TXS: CPU_TXS(CPU); break;
         case TYA: CPU_TYA(CPU); break;
+        // ILLEGAL
+        case DCP: CPU_DCP(CPU); break;
+        case ISC: CPU_ISC(CPU); break;
+        case LAX: CPU_LAX(CPU); break;
+        case SAX: CPU_SAX(CPU); break;
+        case SLO: CPU_SLO(CPU); break;
+        case RLA: CPU_RLA(CPU); break;
+        case SRE: CPU_SRE(CPU); break;
+        case RRA: CPU_RRA(CPU); break;
+        case ANC: CPU_ANC(CPU); break;
+        case ALR: CPU_ALR(CPU); break;
+        case ARR: CPU_ARR(CPU); break;
+        case AXS: CPU_AXS(CPU); break;
+        case KIL: CPU->OPCycle = 0; break;
         default: Assert(0);
     }
 }
