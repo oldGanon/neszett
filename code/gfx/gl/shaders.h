@@ -42,7 +42,7 @@ const char* BlitShaderFittedV =
         // "float m = min(floor(i.x), floor(i.y));"
         "float m = min(i.x, i.y);"
         "i = i / m;"
-        "vec2 o = (1.0 - i) * 0.5;"
+        "vec2 o = (1.0 - i) * vec2(0.4, 0.5);"
         "UV = " GLSL_VERT_POSITION ";"
         "UV = o + i * (UV * vec2(256.0/320.0, 224.0/226.0)) + vec2(27.0/320.0, 1.0/226.0);"
     "}";
