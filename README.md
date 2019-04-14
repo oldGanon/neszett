@@ -6,7 +6,7 @@
 # Description
 
 A NES/Famicom emulator with a focus on accuracy and low input latency.
-Because of that many ergonomic features you might expect are still missing.
+Many ergonomic features you might expect are still missing.
 
 ---
 
