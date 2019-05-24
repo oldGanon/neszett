@@ -5,6 +5,14 @@ typedef void cart_write_func (cart *Cart, u16 Address, u8 Value);
 typedef void cart_step_func (cart *Cart);
 typedef f32 cart_audio_func (cart *Cart);
 
+struct vrc_irq
+{
+    u8 IRQLatch;
+    u8 IRQCounter;
+    u8 IRQCtrl;
+    u16 IRQPrescaler;
+};
+
 struct cart
 {
     console *Console;
@@ -32,6 +40,8 @@ struct cart
 
     union 
     {
+        vrc_irq VrcIrq;
+
         struct
         {
             u8 SR;
@@ -63,11 +73,15 @@ struct cart
 
         struct
         {
+            vrc_irq VrcIrq;
+            u8 PrgSwapMode;
+            u16 Chr[8];
+        } Mapper23;
+
+        struct
+        {
+            vrc_irq VrcIrq;
             u8 Mode;
-            u8 IRQLatch;
-            u8 IRQCounter;
-            u8 IRQCtrl;
-            u16 IRQPrescaler;
 
             struct
             {
@@ -282,6 +296,22 @@ Cart_Init(cart *Cart, u8 Mirroring)
             Cart->Chr[0] = Cart->ChrRom;
             Cart->Ram = Cart->PrgRam;
             Cart->Rom[0] = Cart->PrgRom;
+        } break;
+
+        case 23:
+        {
+            Cart->PrgRomCount <<= 1;
+            Cart->ChrRomCount <<= 3;
+            Cart->Read = Mapper23_Read;
+            Cart->Write = Mapper23_Write;
+            Cart->Step = Mapper23_Step;
+            for (u8 i = 0; i < 8; ++i)
+                Cart->Chr[i] = Cart->ChrRom + i * 0x400;
+            Cart->Ram = Cart->PrgRam;
+            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
         } break;
 
         case 24:
