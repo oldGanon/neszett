@@ -73,6 +73,11 @@ struct cart
 
         struct
         {
+            u8 ChrLatch[2];
+        } Mapper9;
+
+        struct
+        {
             vrc_irq VrcIrq;
             u8 PrgSwapMode;
             u16 Chr[8];
@@ -296,6 +301,20 @@ Cart_Init(cart *Cart, u8 Mirroring)
             Cart->Chr[0] = Cart->ChrRom;
             Cart->Ram = Cart->PrgRam;
             Cart->Rom[0] = Cart->PrgRom;
+        } break;
+
+        case 9:
+        {
+            Cart->PrgRomCount <<= 1;
+            Cart->ChrRomCount <<= 1;
+            Cart->Read = Mapper9_Read;
+            Cart->Write = Mapper9_Write;
+            for (u8 i = 0; i < 4; ++i)
+                Cart->Chr[i] = Cart->ChrRom + i * 0x1000;
+            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 3));
+            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 3));
+            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
         } break;
 
         case 23:

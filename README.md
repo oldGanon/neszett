@@ -23,7 +23,7 @@ Controls mapping can be changed in the _controls.txt_ file.
 
 # Mappers
 
-Supported iNES mappers are 0,1,2,3,4,7,24,69
+Supported iNES mappers are 0,1,2,3,4,7,9,23,24,69
 
 ---
 
