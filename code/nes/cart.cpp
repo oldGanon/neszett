@@ -311,10 +311,27 @@ Cart_Init(cart *Cart, u8 Mirroring)
             Cart->Write = Mapper9_Write;
             for (u8 i = 0; i < 4; ++i)
                 Cart->Chr[i] = Cart->ChrRom + i * 0x1000;
+            Cart->Ram = Cart->PrgRam;
             Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 3));
             Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 3));
             Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
             Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
+            Cart->Mapper9.ChrLatch[0] = 0;
+            Cart->Mapper9.ChrLatch[1] = 2;
+        } break;
+
+        case 10:
+        {
+            Cart->ChrRomCount <<= 1;
+            Cart->Read = Mapper10_Read;
+            Cart->Write = Mapper10_Write;
+            for (u8 i = 0; i < 4; ++i)
+                Cart->Chr[i] = Cart->ChrRom + 0 * 0x1000;
+            Cart->Ram = Cart->PrgRam;
+            Cart->Rom[0] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 2));
+            Cart->Rom[1] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 1));
+            Cart->Mapper9.ChrLatch[0] = 0;
+            Cart->Mapper9.ChrLatch[1] = 2;
         } break;
 
         case 23:
