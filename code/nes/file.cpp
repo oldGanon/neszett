@@ -9,11 +9,7 @@ struct ines_header
     u8 PrgRam;
     u8 Flags9;
     u8 Flags10;
-    u8 Zero1;
-    u8 Zero2;
-    u8 Zero3;
-    u8 Zero4;
-    u8 Zero5;
+    u8 Zero[5];
     u8 Data[1];
 };
 

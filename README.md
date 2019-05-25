@@ -6,7 +6,7 @@
 # Description
 
 A NES/Famicom emulator with a focus on accuracy and low input latency.
-Many ergonomic features you might expect are still missing.
+Many ergonomic features you might expect are missing.
 
 ---
 
@@ -23,7 +23,7 @@ Controls mapping can be changed in the _controls.txt_ file.
 
 # Mappers
 
-Supported iNES mappers are 0,1,2,3,4,7,9,23,24,69
+Supported iNES mappers are 0,1,2,3,4,7,9,10,23,24,69
 
 ---
 

@@ -297,7 +297,7 @@ Mapper5_Write(cart *Cart, u16 Address, u8 Value)
         case 0x5104: Cart->Mapper5.RamExtend = Value & 0x3; break;
         case 0x5105: Cart->Mapper5.NametableMap = Value; break;
         case 0x5106: Cart->Mapper5.FillModeTile = Value; break;
-        case 0x5107: Cart->Mapper5.FillModeColor = Value; break;
+        case 0x5107: Cart->Mapper5.FillModeColor = Value & 0x3; break;
 
         case 5113: Cart->Ram = Cart->PrgRam + ((Value & 0x7) << 14); break;
 
