@@ -71,7 +71,7 @@ iNes_Load(string Filename, string Savename)
         Memory_Copy(Rom, Data, PrgSize);
         Data += PrgSize;
 
-        u8 ChrCount = Header->ChrRom;
+        u8 ChrCount = MAX(1,Header->ChrRom);
         mi ChrSize = ChrCount * 0x2000;
         u8 *Chr = (u8 *)Api_Malloc(ChrSize);
         Memory_Copy(Chr, Data, ChrSize);

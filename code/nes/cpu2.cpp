@@ -1560,7 +1560,6 @@ CPU_AXS(cpu *CPU)
     CPU->A &= CPU->Data;
     if (CPU->A == 0) CPU_SetZ(CPU);
     if (CPU->A & 0x80) CPU_SetN(CPU);
-    
 }
 
 // 

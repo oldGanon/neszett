@@ -78,6 +78,13 @@ struct cart
             u8 VSplitBank;
             u8 IRQScanline;
             u8 IRQEnable;
+            u8 IRQPending;
+            u16 IRQLastAddr;
+            u16 IRQAddrCount;
+            u8 PPUReading;
+            u8 PPUIdleCount;
+            u8 Scanline;
+            u8 InFrame;
             u8 Mul[2];
         } Mapper5;
 
@@ -247,152 +254,18 @@ Cart_Init(cart *Cart, u8 Mirroring)
 
     switch (Cart->Mapper)
     {
-        case 0: 
-        {
-            Cart->Read = Mapper0_Read;
-            Cart->Write = Mapper0_Write;
-            Cart->Chr[0] = Cart->ChrRom;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom;
-            Cart->Rom[1] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 1));
-        } break;
-
-        case 1:
-        {
-            Cart->ChrRomCount <<= 1;
-            Cart->Read = Mapper1_Read;
-            Cart->Write = Mapper1_Write;
-            Cart->Chr[0] = Cart->ChrRom;
-            Cart->Chr[1] = Cart->ChrRom + 0x1000;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom;
-            Cart->Rom[1] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 1));
-        } break;
-
-        case 2:
-        {
-            Cart->Read = Mapper0_Read;
-            Cart->Write = Mapper2_Write;
-            Cart->Chr[0] = Cart->ChrRom;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom;
-            Cart->Rom[1] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 1));
-        } break;
-
-        case 3:
-        {
-            Cart->Read = Mapper0_Read;
-            Cart->Write = Mapper3_Write;
-            Cart->Chr[0] = Cart->ChrRom;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom;
-            Cart->Rom[1] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 1));
-        } break;
-
-        case 4:
-        {
-            Cart->PrgRomCount <<= 1;
-            Cart->ChrRomCount <<= 3;
-            Cart->Read = Mapper4_Read;
-            Cart->Write = Mapper4_Write;
-            for (u8 i = 0; i < 8; ++i)
-                Cart->Chr[i] = Cart->ChrRom + i * 0x400;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
-        } break;
-
-        case 7:
-        {
-            Cart->Read = Mapper7_Read;
-            Cart->Write = Mapper7_Write;
-            Cart->Chr[0] = Cart->ChrRom;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom;
-        } break;
-
-        case 9:
-        {
-            Cart->PrgRomCount <<= 1;
-            Cart->ChrRomCount <<= 1;
-            Cart->Read = Mapper9_Read;
-            Cart->Write = Mapper9_Write;
-            for (u8 i = 0; i < 4; ++i)
-                Cart->Chr[i] = Cart->ChrRom + i * 0x1000;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 3));
-            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 3));
-            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
-            Cart->Mapper9.ChrLatch[0] = 0;
-            Cart->Mapper9.ChrLatch[1] = 2;
-        } break;
-
-        case 10:
-        {
-            Cart->ChrRomCount <<= 1;
-            Cart->Read = Mapper10_Read;
-            Cart->Write = Mapper10_Write;
-            for (u8 i = 0; i < 4; ++i)
-                Cart->Chr[i] = Cart->ChrRom + 0 * 0x1000;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[1] = Cart->PrgRom + (0x4000 * (Cart->PrgRomCount - 1));
-            Cart->Mapper9.ChrLatch[0] = 0;
-            Cart->Mapper9.ChrLatch[1] = 2;
-        } break;
-
-        case 23:
-        {
-            Cart->PrgRomCount <<= 1;
-            Cart->ChrRomCount <<= 3;
-            Cart->Read = Mapper23_Read;
-            Cart->Write = Mapper23_Write;
-            Cart->Step = Mapper23_Step;
-            for (u8 i = 0; i < 8; ++i)
-                Cart->Chr[i] = Cart->ChrRom + i * 0x400;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
-        } break;
-
-        case 24:
-        {
-            Cart->PrgRomCount <<= 1;
-            Cart->ChrRomCount <<= 3;
-            Cart->Read = Mapper24_Read;
-            Cart->Write = Mapper24_Write;
-            Cart->Step = Mapper24_Step;
-            Cart->Audio = Mapper24_Audio;
-            for (u8 i = 0; i < 8; ++i)
-                Cart->Chr[i] = Cart->ChrRom + i * 0x400;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
-        } break;
-
-        case 69:
-        {
-            Cart->PrgRomCount <<= 1;
-            Cart->ChrRomCount <<= 3;
-            Cart->Read = Mapper69_Read;
-            Cart->Write = Mapper69_Write;
-            Cart->Step = Mapper69_Step;
-            Cart->Audio = Mapper69_Audio;
-            for (u8 i = 0; i < 8; ++i)
-                Cart->Chr[i] = Cart->ChrRom + i * 0x400;
-            Cart->Ram = Cart->PrgRam;
-            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[1] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 2));
-            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->PrgRomCount - 1));
-        } break;
+        case 0: Mapper0_Init(Cart); break;
+        case 1: Mapper1_Init(Cart); break;
+        case 2: Mapper2_Init(Cart); break;
+        case 3: Mapper3_Init(Cart); break;
+        case 4: Mapper4_Init(Cart); break;
+        case 5: Mapper5_Init(Cart); break;
+        case 7: Mapper7_Init(Cart); break;
+        case 9: Mapper9_Init(Cart); break;
+        case 10: Mapper10_Init(Cart); break;
+        case 23: Mapper23_Init(Cart); break;
+        case 24: Mapper24_Init(Cart); break;
+        case 69: Mapper69_Init(Cart); break;
 
         default: 
         {

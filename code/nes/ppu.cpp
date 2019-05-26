@@ -239,6 +239,14 @@ PPU_WriteRegister(ppu *PPU, u16 Address, u8 Value)
         case PPUADDR:   PPU_WriteAddress(PPU, Value); break;
         case PPUDATA:   PPU_WriteData(PPU, Value); break;
     }
+
+    // NOTE: Put this somewhere in the mapper code somehow
+    if ((PPU->Console->Cart->Mapper == 5) &&
+        (Address == 0x2001) && (Value & 0x18))
+    {
+        PPU->Console->Cart->Mapper5.InFrame = 0;
+        PPU->Console->Cart->Mapper5.IRQLastAddr = 0;
+    }
 }
 
 inline void
