@@ -67,33 +67,36 @@ iNes_Load(string Filename, string Savename)
         u8 Mirroring = !!(Header->Flags6 & FLAGS6_MIRRORING);
 
         mi PrgSize = Header->PrgRom * 0x4000;
-        u8 *Prg = (u8 *)Api_Malloc(PrgSize);
-        Memory_Copy(Prg, Data, PrgSize);
+        u8 *Rom = (u8 *)Api_Malloc(PrgSize);
+        Memory_Copy(Rom, Data, PrgSize);
         Data += PrgSize;
 
-        u8 ChrCount = MAX(1,Header->ChrRom);
+        u8 ChrCount = Header->ChrRom;
         mi ChrSize = ChrCount * 0x2000;
         u8 *Chr = (u8 *)Api_Malloc(ChrSize);
         Memory_Copy(Chr, Data, ChrSize);
         Data += ChrSize;
 
+        u8 RamCount = MAX(1,Header->PrgRam);        
+        mi RamSize = RamCount * 0x2000;
+        u8 *Ram = (u8 *)Api_Malloc(RamSize);
+
         Result = (cart *)Api_Malloc(sizeof(cart));
-        Result->PrgRom = Prg;
+        Result->PrgRom = Rom;
         Result->ChrRom = Chr;
+        Result->PrgRam = Ram;
         Result->PrgRomCount = Header->PrgRom;
         Result->ChrRomCount = ChrCount;
+        Result->PrgRamCount = RamCount;
         Result->Mapper = Mapper;
-
-        Result->PrgRam = (u8 *)Api_Malloc(0x2000);
-        Result->PrgRamSize = 0x2000;
 
         if (HasBattery)
         {
             Result->Save = File_Open(Savename);
             if (File_Valid(Result->Save))
             {
-                if (File_Size(Result->Save) == 0x2000)
-                    File_ReadData(Result->Save, 0, Result->PrgRam, 0x2000);
+                if (File_Size(Result->Save) == Result->PrgRamCount * 0x2000)
+                    File_ReadData(Result->Save, 0, Result->PrgRam, Result->PrgRamCount * 0x2000);
                 else
                 {
                     File_Close(Result->Save);

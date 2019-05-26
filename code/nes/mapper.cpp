@@ -286,12 +286,140 @@ Mapper4_Write(cart *Cart, u16 Address, u8 Value)
 //
 
 static void
+Mapper5_UpdatePrgMapping(cart *Cart)
+{
+    switch(Cart->Mapper5.PrgMode)
+    {
+        case 0:
+        {
+            Cart->Rom[0] = Cart->PrgRom + (0x2000 * (Cart->Mapper5.PrgBanks[3] & 0x7C));
+            Cart->Rom[1] = Cart->Rom[0] + 0x2000;
+            Cart->Rom[2] = Cart->Rom[1] + 0x2000;
+            Cart->Rom[3] = Cart->Rom[2] + 0x2000;
+        } break;
+
+        case 1:
+        {
+            u8 *Src = (Cart->Mapper5.PrgBanks[1] & 0x80) ? Cart->PrgRom : Cart->PrgRam;
+            Cart->Rom[0] = Src + (0x2000 * (Cart->Mapper5.PrgBanks[1] & 0x7E));
+            Cart->Rom[1] = Cart->Rom[0] + 0x2000;
+            Cart->Rom[2] = Cart->PrgRom + (0x2000 * (Cart->Mapper5.PrgBanks[3] & 0x7E));
+            Cart->Rom[3] = Cart->Rom[2] + 0x2000;
+        } break;
+        
+        case 2:
+        {
+            u8 *Src = (Cart->Mapper5.PrgBanks[1] & 0x80) ? Cart->PrgRom : Cart->PrgRam;
+            Cart->Rom[0] = Src + (0x2000 * (Cart->Mapper5.PrgBanks[1] & 0x7E));
+            Cart->Rom[1] = Cart->Rom[0] + 0x2000;
+            Src = (Cart->Mapper5.PrgBanks[2] & 0x80) ? Cart->PrgRom : Cart->PrgRam;
+            Cart->Rom[2] = Src + (0x2000 * (Cart->Mapper5.PrgBanks[2] & 0x7F));
+            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->Mapper5.PrgBanks[3] & 0x7F));
+        } break;
+        
+        case 3:
+        {
+            u8 *Src = (Cart->Mapper5.PrgBanks[0] & 0x80) ? Cart->PrgRom : Cart->PrgRam;
+            Cart->Rom[0] = Src + (0x2000 * (Cart->Mapper5.PrgBanks[0] & 0x7F));
+            Src = (Cart->Mapper5.PrgBanks[1] & 0x80) ? Cart->PrgRom : Cart->PrgRam;
+            Cart->Rom[1] = Src + (0x2000 * (Cart->Mapper5.PrgBanks[1] & 0x7F));
+            Src = (Cart->Mapper5.PrgBanks[2] & 0x80) ? Cart->PrgRom : Cart->PrgRam;
+            Cart->Rom[2] = Src + (0x2000 * (Cart->Mapper5.PrgBanks[2] & 0x7F));
+            Cart->Rom[3] = Cart->PrgRom + (0x2000 * (Cart->Mapper5.PrgBanks[3] & 0x7F));
+        } break;
+        
+        default: break;
+    }
+}
+
+static void
+Mapper5_UpdateChrMapping(cart *Cart)
+{
+    switch (Cart->Mapper5.ChrMode)
+    {
+        case 0:
+        {
+            Cart->Chr[0] = Cart->ChrRom + 0x2000 * (Cart->Mapper5.ChrBanks[7] % Cart->ChrRomCount);
+            Cart->Chr[1] = Cart->Chr[0] + 0x0400;
+            Cart->Chr[2] = Cart->Chr[0] + 0x0800;
+            Cart->Chr[3] = Cart->Chr[0] + 0x0C00;
+            Cart->Chr[4] = Cart->Chr[0] + 0x1000;
+            Cart->Chr[5] = Cart->Chr[0] + 0x1400;
+            Cart->Chr[6] = Cart->Chr[0] + 0x1800;
+            Cart->Chr[7] = Cart->Chr[0] + 0x1C00;
+        } break;
+
+        case 1:
+        {
+            u16 ChrBankCount = Cart->ChrRomCount << 1;
+            Cart->Chr[0] = Cart->ChrRom + 0x1000 * (Cart->Mapper5.ChrBanks[3] % ChrBankCount);
+            Cart->Chr[1] = Cart->Chr[0] + 0x400;
+            Cart->Chr[2] = Cart->Chr[0] + 0x800;
+            Cart->Chr[3] = Cart->Chr[0] + 0xC00;
+            Cart->Chr[4] = Cart->ChrRom + 0x1000 * (Cart->Mapper5.ChrBanks[7] % ChrBankCount);
+            Cart->Chr[5] = Cart->Chr[4] + 0x400;
+            Cart->Chr[6] = Cart->Chr[4] + 0x800;
+            Cart->Chr[7] = Cart->Chr[4] + 0xC00;
+        } break;
+
+        case 2:
+        {
+            u16 ChrBankCount = Cart->ChrRomCount << 2;
+            Cart->Chr[0] = Cart->ChrRom + 0x800 * (Cart->Mapper5.ChrBanks[1] % ChrBankCount);
+            Cart->Chr[1] = Cart->Chr[0] + 0x400;
+            Cart->Chr[2] = Cart->ChrRom + 0x800 * (Cart->Mapper5.ChrBanks[3] % ChrBankCount);
+            Cart->Chr[3] = Cart->Chr[2] + 0x400;
+            Cart->Chr[4] = Cart->ChrRom + 0x800 * (Cart->Mapper5.ChrBanks[5] % ChrBankCount);
+            Cart->Chr[5] = Cart->Chr[4] + 0x400;
+            Cart->Chr[6] = Cart->ChrRom + 0x800 * (Cart->Mapper5.ChrBanks[7] % ChrBankCount);
+            Cart->Chr[7] = Cart->Chr[6] + 0x400;
+        } break;
+
+        case 3:
+        {
+            u16 ChrBankCount = Cart->ChrRomCount << 3;
+            Cart->Chr[0] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[0] % ChrBankCount);
+            Cart->Chr[1] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[1] % ChrBankCount);
+            Cart->Chr[2] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[2] % ChrBankCount);
+            Cart->Chr[3] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[3] % ChrBankCount);
+            Cart->Chr[4] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[4] % ChrBankCount);
+            Cart->Chr[5] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[5] % ChrBankCount);
+            Cart->Chr[6] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[6] % ChrBankCount);
+            Cart->Chr[7] = Cart->ChrRom + 0x400 * (Cart->Mapper5.ChrBanks[7] % ChrBankCount);
+        } break;
+    }
+}
+
+static void
+Mapper5_UpdateChrBGMapping(cart *Cart)
+{
+    switch (Cart->Mapper5.ChrMode)
+    {
+        case 0:
+        { } break;
+
+        case 1:
+        { } break;
+
+        case 2:
+        { } break;
+
+        case 3:
+        { } break;
+    }
+}
+
+static void
 Mapper5_Write(cart *Cart, u16 Address, u8 Value)
 {
     switch (Address)
     {
-        case 0x5100: Cart->Mapper5.PrgMode = Value & 0x3; break;
-        case 0x5101: Cart->Mapper5.ChrMode = Value & 0x3; break;
+        case 0x5100: Cart->Mapper5.PrgMode = Value & 0x3; 
+                     Mapper5_UpdatePrgMapping(Cart);
+                     break;
+        case 0x5101: Cart->Mapper5.ChrMode = Value & 0x3;
+                     Mapper5_UpdateChrMapping(Cart);
+                     break;
         case 0x5102: Cart->Mapper5.RamProtect1 = Value & 0x3; break;
         case 0x5103: Cart->Mapper5.RamProtect2 = Value & 0x3; break;
         case 0x5104: Cart->Mapper5.RamExtend = Value & 0x3; break;
@@ -299,79 +427,51 @@ Mapper5_Write(cart *Cart, u16 Address, u8 Value)
         case 0x5106: Cart->Mapper5.FillModeTile = Value; break;
         case 0x5107: Cart->Mapper5.FillModeColor = Value & 0x3; break;
 
-        case 5113: Cart->Ram = Cart->PrgRam + ((Value & 0x7) << 14); break;
-
+        case 0x5113:
+        {
+            Cart->Ram = Cart->PrgRam + (0x2000 * (Value & 7));
+        } break;
         case 0x5114:
-        {
-            if (Cart->Mapper5.PrgMode == 3)
-            {
-                mi Offset = (mi)Value;
-                Offset &= (Value & 0x80) ? 0x7 : 0x7F;
-                Offset <<= 13;
-                u8 *Src = (Value & 0x80) ? Cart->PrgRam : Cart->PrgRom;
-                Cart->Rom[0] = Src + Offset;
-            }
-        } break;
         case 0x5115:
-        {
-            u8 *Src;
-            mi Offset;
-            if (Value & 0x80)
-            {
-                Src = Cart->PrgRom;
-                Offset = ((mi)Value & 0x7F) << 13;
-            }
-            else
-            {
-                Src = Cart->PrgRam;
-                Offset = ((mi)Value & 0x7) << 13;
-            }
-            switch (Cart->Mapper5.PrgMode)
-            {
-                default: break;
-                case 1:
-                case 2:
-                {
-                    Cart->Rom[0] = Src + (Offset & 0xFC000);
-                    Cart->Rom[1] = Src + (Offset | 0x02000);
-                }
-                case 3: Cart->Rom[1] = Src + Offset; break;
-            }
-        } break;
         case 0x5116:
-        {
-            u8 *Src;
-            if (Value & 0x80)
-                Src = Cart->PrgRom + (((mi)Value & 0x7F) << 13);
-            else
-                Src = Cart->PrgRam + (((mi)Value & 0x7) << 13);
-
-            if (Cart->Mapper5.PrgMode & 0x2)
-                Cart->Rom[2] = Src;
-        } break;
         case 0x5117:
         {
-            switch (Cart->Mapper5.PrgMode)
-            {
-                case 0:
-                {
-                    mi Offset = (((mi)Value & 0x7C) << 13);
-                    Cart->Rom[0] = Cart->PrgRom + Offset;
-                    Cart->Rom[1] = Cart->PrgRom + (Offset | 0x02000);
-                    Cart->Rom[2] = Cart->PrgRom + (Offset | 0x04000);
-                    Cart->Rom[3] = Cart->PrgRom + (Offset | 0x06000);
-                } break;
-                case 1:
-                {
-                    mi Offset = ((mi)Value & 0x7E) << 13;
-                    Cart->Rom[2] = Cart->PrgRom + Offset;
-                    Cart->Rom[3] = Cart->PrgRom + (Offset | 0x02000);
-                } break;
-                case 2:
-                case 3: Cart->Rom[3] = Cart->PrgRom + (((mi)Value & 0x7F) << 13); break;
-            }
+            Cart->Mapper5.PrgBanks[Address-0x5114] = Value;
+            Mapper5_UpdatePrgMapping(Cart);
         } break;
         
+        case 0x5120:
+        case 0x5121:
+        case 0x5122:
+        case 0x5123:
+        case 0x5124:
+        case 0x5125:
+        case 0x5126:
+        case 0x5127:
+        {
+            Cart->Mapper5.ChrBanks[Address-0x5120] = (Cart->Mapper5.ChrBankHi << 8) | Value;
+            Mapper5_UpdateChrMapping(Cart);
+        } break;
+
+        case 0x5128:
+        case 0x5129:
+        case 0x512A:
+        case 0x512B:
+        {
+            Cart->Mapper5.ChrBGBanks[Address-0x5128] = (Cart->Mapper5.ChrBankHi << 8) | Value;
+            Mapper5_UpdateChrBGMapping(Cart);
+        } break;
+
+        case 0x5130: Cart->Mapper5.ChrBankHi = Value & 3; break;
+
+        case 0x5200: Cart->Mapper5.VSplitMode = Value; break;
+        case 0x5201: Cart->Mapper5.VSplitScroll = Value; break;
+        case 0x5202: Cart->Mapper5.VSplitBank = Value; break;
+        case 0x5203: Cart->Mapper5.IRQScanline = Value; break;
+        case 0x5204: Cart->Mapper5.IRQEnable = Value & 0x80; break;
+        case 0x5205: Cart->Mapper5.Mul[0] = Value; break;
+        case 0x5206: Cart->Mapper5.Mul[1] = Value; break;
+
         default: break;
     }
 }

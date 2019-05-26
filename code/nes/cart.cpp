@@ -35,7 +35,7 @@ struct cart
     
     u16 PrgRomCount;
     u16 ChrRomCount;
-    u16 PrgRamSize;
+    u16 PrgRamCount;
     u16 Mapper;
 
     union 
@@ -69,6 +69,16 @@ struct cart
             u8 NametableMap;
             u8 FillModeTile;
             u8 FillModeColor;
+            u8 PrgBanks[4];
+            u16 ChrBanks[8];
+            u16 ChrBGBanks[4];
+            u8 ChrBankHi;
+            u8 VSplitMode;
+            u8 VSplitScroll;
+            u8 VSplitBank;
+            u8 IRQScanline;
+            u8 IRQEnable;
+            u8 Mul[2];
         } Mapper5;
 
         struct
