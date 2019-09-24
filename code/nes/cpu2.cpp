@@ -524,8 +524,6 @@ CPU_R(cpu *CPU, u16 Address)
         else if (Address <= 0x4017)
             return Gamepad_Read(CPU->Console, Address & 1);
         else return 0;
-    else if (Address < 0x6000)
-        return 0; // unused
     else return Cart_Read(CPU->Console, Address);
 }
 
@@ -543,7 +541,6 @@ CPU_W(cpu *CPU, u16 Address, u8 Value)
             Gamepad_Write(CPU->Console, Value);
         else if (Address == 0x4014) CPU_DMA(CPU, Value);
         else return;
-    else if (Address < 0x6000); // unused
     else Cart_Write(CPU->Console, Address, Value);
 }
 
