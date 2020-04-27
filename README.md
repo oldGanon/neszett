@@ -12,7 +12,7 @@ Many ergonomic features you might expect are missing.
 
 # Usage
 
-Dragging a ROM file onto the window load said ROM if it is supported by the emulator otherwise it will silently fail in the background.
+Dragging a ROM file onto the window loads said ROM if it is supported by the emulator, otherwise it will silently fail in the background.
 Resize the window by dragging the right or lower edge of the window.
 Move the window by dragging anywhere else.
 Shift+Enter toggles Fullscreen.
